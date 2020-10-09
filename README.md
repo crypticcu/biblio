@@ -19,4 +19,5 @@ If you would like request a change in the official release or have found a bug, 
 
 # Change Log
 v1.0 - Release
+
 v1.1 - Strings are now dynamically allocated. Citations can now specify if date is access date. Updated help page.
