@@ -1,4 +1,6 @@
 # Biblio v1.1
+
+## Description
 Command-line bibliography creator and editor.
 
 Biblio is a bibliography creator and editor that easily runs in the terminal.
