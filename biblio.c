@@ -3,38 +3,40 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h> //POSIX-exclusive
-#define MAX_SIZE 256
+
+#define max_read_size 256
+#define str_alloc (char *) malloc(sizeof(char))
 
 struct Citation {
-	char title[MAX_SIZE];
-	char first[MAX_SIZE];
-	char last[MAX_SIZE];
-	char others[MAX_SIZE];
+	char *title;
+	char *first;
+	char *last;
+	char *others;
 	
-	char city[MAX_SIZE];
-	char publisher[MAX_SIZE];
-	char publication[MAX_SIZE];
-	char issue[MAX_SIZE];
-	char page[MAX_SIZE];
+	char *city;
+	char *publisher;
+	char *publication;
+	char *issue;
+	char *page;
 
-	char website[MAX_SIZE];
-	char url[MAX_SIZE];
-	char doi[MAX_SIZE];
+	char *website;
+	char *url;
+	char *doi;
 
-	char month[MAX_SIZE];
-	char day[MAX_SIZE];
-	char year[MAX_SIZE];
-	char access[MAX_SIZE];
-};
+	char *month;
+	char *day;
+	char *year;
+	char *access;
+} Item;
 
-/* GIM - fGets IMproved */
-void gim(char* buffer, int size, FILE* stream) {
+/* Removes leading newline from fgets() */
+void fgets_nnl(char *buffer, int size, FILE *stream) {
 	fgets(buffer, size, stream);
-	buffer[strcspn(buffer, "\n")] = 0; // Removes leading newline
+	buffer[strcspn(buffer, "\n")] = 0;
 }
 
 /* Returns boolean if strings are equal */
-bool streq(const char* string1, const char* string2) {
+bool streq(const char *string1, const char *string2) {
 	if (strcmp(string1, string2) == 0)
 		return true;
 	else
@@ -57,7 +59,7 @@ void bold_txt() {
 }
 
 /* Outputs the given error message */
-void err_out(char* string) {
+void err_out(char *string) {
 	printf("   └");
 	bold_txt();
 	printf(" Error: ");
@@ -66,77 +68,97 @@ void err_out(char* string) {
 }
 
 /* Creates a citation */
-void cite(char* buffer, FILE* file, bool* editing_sw, bool* esc_sw) {
-struct Citation Item;
-char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
+void cite(FILE *file, bool *editing_sw, bool *esc_sw) {
+	char *str_buf = str_alloc, *style = str_alloc, *type = str_alloc;
+	Item.title = str_alloc;
+	Item.first = str_alloc;
+	Item.last = str_alloc;
+	Item.others = str_alloc;
+	
+	Item.city = str_alloc;
+	Item.publisher = str_alloc;
+	Item.publication = str_alloc;
+	Item.issue = str_alloc;
+	Item.page = str_alloc;
+
+	Item.website = str_alloc;
+	Item.url = str_alloc;
+	Item.doi = str_alloc;
+
+	Item.month = str_alloc;
+	Item.day = str_alloc;
+	Item.year = str_alloc;
+	Item.access = str_alloc;
 
 	for (;;) {
 		printf("   └ Style: ");
-		gim(style, MAX_SIZE, stdin);
+		fgets_nnl(style, max_read_size, stdin);
 
 		/* STYLED CITATIONS */
 		if (streq(style, "mla") || streq(style, "apa") || streq(style, "chicago")) {
 			printf("      └ Type: ");
-			gim(type, MAX_SIZE, stdin);
+			fgets_nnl(type, max_read_size, stdin);
 			if (streq(type, "website") || streq(type, "book") || streq(type, "article")) {
 
 				/* ----- General Attributes ----- */
 				printf("         ├ Title: ");
-				gim(Item.title, MAX_SIZE, stdin);
-				printf("         ├ Author Name: \n");
+				fgets_nnl(Item.title, max_read_size, stdin);
+				printf("         ├ Author name: \n");
 				printf("         │  ├ First: ");
-				gim(Item.first, MAX_SIZE, stdin);
+				fgets_nnl(Item.first, max_read_size, stdin);
 				printf("         │  ├ Last: ");
-				gim(Item.last, MAX_SIZE, stdin);
+				fgets_nnl(Item.last, max_read_size, stdin);
 				printf("         │  └ Others? (y/n): ");
-				gim(Item.others, MAX_SIZE, stdin);
+				fgets_nnl(Item.others, max_read_size, stdin);
 
 				/* ----- Website-specific attributes ----- */
 				if (streq(type, "website")) {
 					if (!streq(style, "apa")) {
 						printf("         ├ Website: ");
-						gim(Item.website, MAX_SIZE,stdin);
+						fgets_nnl(Item.website, max_read_size,stdin);
 						printf("         │  └ URL: ");
 					} else
 						printf("         ├ URL: ");
-					gim(Item.url, MAX_SIZE, stdin);
+					fgets_nnl(Item.url, max_read_size, stdin);
 				}
 
 				/* ----- Website/book-specific attributes ----- */
 				if (streq(type, "website") && !streq(style, "apa") || streq(type, "book")) {
 					printf("         ├ Publisher: ");
-					gim(Item.publisher, MAX_SIZE,stdin);
+					fgets_nnl(Item.publisher, max_read_size,stdin);
 				}
 
 				/* ----- Book-specific attributes ----- */
 				if (streq(type, "book") && !streq(style, "mla")) {
 					printf("         │  └ City: ");
-					gim(Item.city, MAX_SIZE, stdin);
+					fgets_nnl(Item.city, max_read_size, stdin);
 				}
 
 				/* ----- Article-specific attributes ----- */
 				if (streq(type, "article")) {
 					printf("         ├ Publication: ");
-					gim(Item.publication, MAX_SIZE, stdin);
+					fgets_nnl(Item.publication, max_read_size, stdin);
 					printf("         │  ├ Issue #: ");
-					gim(Item.issue, MAX_SIZE, stdin);
+					fgets_nnl(Item.issue, max_read_size, stdin);
 					printf("         │  ├ Page(s): ");
-					gim(Item.page, MAX_SIZE, stdin);
+					fgets_nnl(Item.page, max_read_size, stdin);
 					printf("         │  └ DOI: ");
-					gim(Item.doi, MAX_SIZE, stdin);
+					fgets_nnl(Item.doi, max_read_size, stdin);
 				}
 
 				/* ----- Date attributes ----- */
 				printf("         └ Date:\n");
 				printf("            ├ Year: ");
-				gim(Item.year, MAX_SIZE, stdin);
+				fgets_nnl(Item.year, max_read_size, stdin);
 				if (Item.year[0] != 0) {
 					printf("            ├ Month: ");
-					gim(Item.month, MAX_SIZE,stdin);
+					fgets_nnl(Item.month, max_read_size,stdin);
 					if (Item.month[0] != 0) {
-						printf("            └ Day: ");
-						gim(Item.day, MAX_SIZE,stdin);
+						printf("            ├ Day: ");
+						fgets_nnl(Item.day, max_read_size,stdin);
 					}
+				printf("            └ Access date? (y/n): ");
+				fgets_nnl(Item.access, max_read_size, stdin);
 				}
 
 				/* ----- MLA output ----- */
@@ -145,7 +167,7 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 						fputs(Item.last, file);
 						fputs(", ", file);
 						fputs(Item.first, file);
-						if (Item.others[0] == 'n')
+						if (Item.others[0] == 'y')
 							fputs(" et al", file);
 						fputs(". ", file);
 					}
@@ -176,6 +198,8 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 						}
 					}
 					if (Item.year[0] != 0) {
+						if(Item.access[0] == 'y')
+							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
 							fputs(Item.month, file);
 							fputs(" ", file);
@@ -212,6 +236,8 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 					}
 					if (Item.year[0] != 0) {
 						fputs("(", file);
+						if(Item.access[0] == 'y')
+							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
 							fputs(Item.month, file);
 							fputs(" ", file);
@@ -295,6 +321,8 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 					if (Item.year[0] != 0) {
 						if (streq(type, "article"))
 							fputs("(", file);
+						if(Item.access[0] == 'y')
+							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
 							fputs(Item.month, file);
 							fputs(" ", file);
@@ -339,7 +367,7 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 
 				/* ----- Manual entry ----- */
 				printf("      └ Manual entry: ");
-				gim(str_buf, MAX_SIZE, stdin);
+				fgets_nnl(str_buf, max_read_size, stdin);
 
 				/* ----- Output ----- */
 				fputs(str_buf, file);
@@ -357,12 +385,15 @@ char str_buf[MAX_SIZE], style[MAX_SIZE], type[MAX_SIZE];
 		}
 
 	}
+	free(str_buf);
+	free(style);
+	free(type);
 }
 
 /* Deletes a line from a file */
-void del_line(FILE* file, char* path, int ln_del) {
-	char str_buf[MAX_SIZE];
-	FILE* temp_file;
+void del_line(FILE *file, char *path, int ln_del) {
+	char *str_buf = str_alloc;
+	FILE *temp_file;
 	fpos_t pos;
 
 	temp_file = fopen(".temp", "w");
@@ -373,10 +404,10 @@ void del_line(FILE* file, char* path, int ln_del) {
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 		fprintf(temp_file, "%s", str_buf);
 	}
-    fgets(str_buf, MAX_SIZE, file);
+    fgets(str_buf, max_read_size, file);
 
 	/* ----- Prints the rest of the file ----- */
     for (;;) {
@@ -384,7 +415,7 @@ void del_line(FILE* file, char* path, int ln_del) {
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 		fprintf(temp_file, "%s", str_buf);
     }
 
@@ -393,12 +424,13 @@ void del_line(FILE* file, char* path, int ln_del) {
     fclose(temp_file);
 	fclose(file);
 	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	free(str_buf);
 }
 
 /* Modifies a line in a file */
-void mod_line(FILE* file, char* path, int ln_mod, char* string) {
-	char str_buf[MAX_SIZE];
-	FILE* temp_file;
+void mod_line(FILE *file, char *path, int ln_mod, char *string) {
+	char *str_buf = str_alloc;
+	FILE *temp_file;
 	fpos_t pos;
 
 
@@ -410,10 +442,10 @@ void mod_line(FILE* file, char* path, int ln_mod, char* string) {
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 		fprintf(temp_file, "%s", str_buf);
 	}
-    fgets(str_buf, MAX_SIZE, file);
+    fgets(str_buf, max_read_size, file);
 	fprintf(temp_file, "%s", string);
 
 	if(streq(path, ".bibliorc")) { // Biblio-exclusive
@@ -426,7 +458,7 @@ void mod_line(FILE* file, char* path, int ln_mod, char* string) {
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 		fprintf(temp_file, "%s", str_buf);
     }
 
@@ -435,16 +467,17 @@ void mod_line(FILE* file, char* path, int ln_mod, char* string) {
     fclose(temp_file);
 	fclose(file);
 	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	free(str_buf);
 }
 
 /* Moves a line in a file to another position */
-void mov_line(FILE* file, char* path, int ln_from, int ln_to) {
-	char str_buf[MAX_SIZE], str_buf_ex[MAX_SIZE];
+void mov_line(FILE *file, char *path, int ln_from, int ln_to) {
+	char *str_buf = str_alloc, *str_buf_ex = str_alloc;
 	int ln_num = 1;
-	FILE* temp_file;
+	FILE *temp_file;
 	fpos_t pos;
-	temp_file = fopen(".temp", "w");
 
+	temp_file = fopen(".temp", "w");
 	if(ln_from < ln_to) // Bug fix
 		ln_to++;
 
@@ -454,9 +487,9 @@ void mov_line(FILE* file, char* path, int ln_from, int ln_to) {
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 	}
-    fgets(str_buf_ex, MAX_SIZE, file);
+    fgets(str_buf_ex, max_read_size, file);
 	rewind(file);
 
 	/* ----- Places line in new position ----- */
@@ -466,10 +499,10 @@ void mov_line(FILE* file, char* path, int ln_from, int ln_to) {
 			break;
 		fsetpos(file, &pos);
 		if (ln_num != ln_from) {
-			fgets(str_buf, MAX_SIZE, file);
+			fgets(str_buf, max_read_size, file);
 			fprintf(temp_file, "%s", str_buf);
 		} else
-			fgets(str_buf, MAX_SIZE, file);
+			fgets(str_buf, max_read_size, file);
 	}
 	fprintf(temp_file, "%s", str_buf_ex);
 
@@ -480,10 +513,10 @@ void mov_line(FILE* file, char* path, int ln_from, int ln_to) {
 			break;
 		fsetpos(file, &pos);
 		if (ln_num != ln_from) {
-			fgets(str_buf, MAX_SIZE, file);
+			fgets(str_buf, max_read_size, file);
 			fprintf(temp_file, "%s", str_buf);
 		} else
-			fgets(str_buf, MAX_SIZE, file);
+			fgets(str_buf, max_read_size, file);
 	}
 
     remove(path);
@@ -491,11 +524,13 @@ void mov_line(FILE* file, char* path, int ln_from, int ln_to) {
     fclose(temp_file);
 	fclose(file);
 	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	free(str_buf);
+	free(str_buf_ex);
 }
 
 /* Outputs the contents of a file with line numbers */
-void fout(FILE* file) {
-	char str_buf[MAX_SIZE];
+void fout(FILE *file) {
+	char *str_buf = str_alloc;
 	fpos_t pos;
 
 	rewind(file);
@@ -505,22 +540,25 @@ void fout(FILE* file) {
 			break;
 		fsetpos(file, &pos);
 		printf("\t%d. ", ln_num);
-		fgets(str_buf, MAX_SIZE, file);
+		fgets(str_buf, max_read_size, file);
 		printf("%s", str_buf);
 	}
+	free(str_buf);
 }
+
 /* Moves position in file to a line */
-void fsetpos_toline(FILE* file, int num) {
-	char str_buf[MAX_SIZE];
+void fsetpos_toline(FILE *file, int num) {
+	char *str_buf = str_alloc;
 	int ln_num = 1;
 
 	rewind(file);
 	for (;;) {
 		if (ln_num == num)
 			break;
-		fgets(str_buf,MAX_SIZE, file);
+		fgets(str_buf,max_read_size, file);
 		ln_num++;
 	}
+	free(str_buf);
 }
 
 /* Outputs the title */
@@ -534,7 +572,7 @@ void title_fclosed() {
 
 /* Outputs the title and help page */
 void title_help() {
-	char str_buf[MAX_SIZE];
+	char *str_buf = str_alloc;
 
 	system("clear");
 	printf("Bibliographer v1.0 » ");
@@ -569,11 +607,12 @@ void title_help() {
 	puts(" * Use one citation style per document\n\n\n");
 
 	printf("Press [ENTER] to continue.");
-	gim(str_buf, MAX_SIZE, stdin);
+	fgets_nnl(str_buf, max_read_size, stdin);
+	free(str_buf);
 }
 
 /* Outputs the title and current file */
-void title_fopen(FILE* file, char* path) {
+void title_fopen(FILE *file, char *path) {
 	system("clear");
 	printf("Bibliographer v1.0 » ");
 	bold_txt();
@@ -589,10 +628,10 @@ void title_fopen(FILE* file, char* path) {
 
 /* Main */
 const int main(void) {
-	char cmd_symbol, str_input[MAX_SIZE], path[MAX_SIZE];
+	char cmd_symbol, *str_input = str_alloc, *path = str_alloc;
 	bool pref_created, auto_refresh, file_open, editing, oper_success, esc;
 	int num_input;
-	FILE* fptr;
+	FILE *fptr;
 	fpos_t fpos;
 	struct Citation Item;
 
@@ -614,7 +653,7 @@ const int main(void) {
 
 		/* ----- 'auto_refresh' preference ----- */
 		fsetpos_toline(fptr, 2);
-		fgets(str_input, MAX_SIZE, fptr);
+		fgets(str_input, max_read_size, fptr);
 		if (streq(str_input, "on")) {
 			auto_refresh = true;
 		}
@@ -631,13 +670,13 @@ const int main(void) {
 
 		/* ----- Command line ----- */
 		printf("%c ", cmd_symbol); // Ensures command line cursor of user's choice
-		gim(str_input, MAX_SIZE, stdin);
+		fgets_nnl(str_input, max_read_size, stdin);
 
 		/* ----- 'modify' command (file-exclusive) ----- */
 		if (streq(str_input, "modify")) {
 			if (file_open) {
 				printf("   ├ Citation #: ");
-				gim(str_input, MAX_SIZE, stdin);
+				fgets_nnl(str_input, max_read_size, stdin);
 				num_input = atoi(str_input);
 				if (!streq(str_input, "esc")) // Breaks if 'esc' is input
 					editing = true; // Allows for 'cite' command to commence right afterwards
@@ -656,17 +695,17 @@ const int main(void) {
 				title_fopen(fptr, path);
 				printf("%c cite\n", cmd_symbol);
 			case 1:
-				cite(str_input, fptr, &editing, &esc);
+				cite(fptr, &editing, &esc);
 				if(!esc) { // Breaks if 'esc' is input
 					fptr = fopen(".temp", "r");
 					if (editing) { // If came from 'modify' command...
-						fgets(str_input, MAX_SIZE, fptr);
+						fgets(str_input, max_read_size, fptr);
 						fclose(fptr);
 						fptr = fopen(path, "r");
 						mod_line(fptr, path, num_input, str_input);
 						editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
 					} else { // Else...
-						fgets(str_input, MAX_SIZE, fptr);
+						fgets(str_input, max_read_size, fptr);
 						fclose(fptr);
 						fptr = fopen(path, "a");
 						fputs(str_input, fptr);
@@ -710,11 +749,11 @@ const int main(void) {
 		if (streq(str_input, "config")) {
 			fptr = fopen(".bibliorc", "r");
 			printf("   ├ Auto-refresh: "); // Configuration for 'auto_refresh' preference
-			gim(str_input, MAX_SIZE, stdin);
+			fgets_nnl(str_input, max_read_size, stdin);
 			if(!streq(str_input, "esc")) { // Breaks if 'esc' is input
 				mod_line(fptr, ".bibliorc", 2, str_input);
 				printf("   └ Command symbol: "); // Configuration for 'cmd_symbol' preference
-				gim(str_input, MAX_SIZE, stdin);
+				fgets_nnl(str_input, max_read_size, stdin);
 				if(!streq(str_input, "esc")) // Breaks if 'esc' is input
 					mod_line(fptr, ".bibliorc", 5, str_input);
 			}
@@ -726,7 +765,7 @@ const int main(void) {
 		if (streq(str_input, "delete")) {
 			if (file_open) {
 				printf("   └ Citation #: ");
-				gim(str_input, MAX_SIZE, stdin);			
+				fgets_nnl(str_input, max_read_size, stdin);			
 				if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
 					fptr = fopen(path, "r");
 					num_input = atoi(str_input);
@@ -762,14 +801,14 @@ const int main(void) {
 		if (streq(str_input, "move")) {
 			if(file_open) {
 				printf("   ├ Citation #: ");
-				gim(str_input, MAX_SIZE, stdin);
+				fgets_nnl(str_input, max_read_size, stdin);
 				fptr = fopen(path, "r");
 				if (atoi(str_input) < 0) // Ensures input over 0
 					err_out("Citation does not exist");
 				else if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
 					num_input = atoi(str_input);
 					printf("   └ Move to: ");
-					gim(str_input, MAX_SIZE, stdin);
+					fgets_nnl(str_input, max_read_size, stdin);
 					if(!streq(str_input, "esc")) // Breaks if 'esc' is input
 						mov_line(fptr, path, num_input, atoi(str_input));
 				}
@@ -784,7 +823,7 @@ const int main(void) {
 		/* ----- 'open' command ----- */
 		if (streq(str_input, "open")) {
 			printf("   └ Bibliography name: ");
-			gim(path, MAX_SIZE, stdin);
+			fgets_nnl(path, max_read_size, stdin);
 			strcat(path, ".bib"); // Ensures that a bibliography file is created
 			if (!streq(path, "esc")) { // Breaks if 'esc' is input
 				file_open = true;
@@ -809,6 +848,8 @@ const int main(void) {
 		oper_success = false;
 	}
 
+	free(str_input);
+	free(path);
 	return EXIT_SUCCESS;
 }
 
