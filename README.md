@@ -17,7 +17,7 @@ each available to use in three different formats:
 Terminals running this program require the ability to identify ANSI/VT100 escape codes, as they are used to format text throughout.
 If you would like request a change in the official release or have found a bug, feel free to contact me.
 
-# Change Log
-v1.0 - Release
+## Change Log
+*v1.0* - Release
 
-v1.1 - Strings are now dynamically allocated. Citations can now specify if date is access date. Updated help page.
+*v1.1* - Strings are now dynamically allocated. Citations can now specify if date is access date. Updated help page.
