@@ -8,7 +8,7 @@ The program currently supports such citations styles as:
  * APA
  * Chicago
  
- ...each available to use in three different formats:
+each available to use in three different formats:
  * Website
  * Book
  * Article
