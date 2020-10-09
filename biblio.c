@@ -604,7 +604,8 @@ void title_help() {
 	puts("Tips");
 	reset_txt();
 	puts(" * Citations should be in alphabetical order");
-	puts(" * Use one citation style per document\n\n\n");
+	puts(" * Use one citation style per document");
+	puts(" * Don't know part of a citation? Press [ENTER] to leave it blank\n");
 
 	printf("Press [ENTER] to continue.");
 	fgets_nnl(str_buf, max_read_size, stdin);
