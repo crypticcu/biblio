@@ -23,3 +23,5 @@ If you would like request a change in the official release or have found a bug, 
 *v1.0* - Release
 
 *v1.1* - Strings are now dynamically allocated. Citations can now specify if date is access date. Updated help page.
+
+*v1.2* - Strings no longer cause heap overflow. Improved UI. Added the 'echo' command. Updated help page.
