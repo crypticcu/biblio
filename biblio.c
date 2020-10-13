@@ -1,3 +1,5 @@
+// Citation information credit Amanda Howell @ https://www.youtube.com/channel/UCqCSnXwJSpXNJRR0EHIk7RA/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -5,7 +7,7 @@
 #include <unistd.h> //POSIX-exclusive
 
 #define max_read_size 256
-#define str_alloc (char *) malloc(sizeof(char))
+#define str_alloc (char *) malloc(max_read_size)
 
 struct Citation {
 	char *title;
@@ -70,6 +72,7 @@ void err_out(char *string) {
 /* Creates a citation */
 void cite(FILE *file, bool *editing_sw, bool *esc_sw) {
 	char *str_buf = str_alloc, *style = str_alloc, *type = str_alloc;
+	
 	Item.title = str_alloc;
 	Item.first = str_alloc;
 	Item.last = str_alloc;
@@ -422,8 +425,7 @@ void del_line(FILE *file, char *path, int ln_del) {
     remove(path);
     rename(".temp", path); // Replaces old file with new one
     fclose(temp_file);
-	fclose(file);
-	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	rewind(file);
 	free(str_buf);
 }
 
@@ -465,8 +467,7 @@ void mod_line(FILE *file, char *path, int ln_mod, char *string) {
     remove(path);
     rename(".temp", path); // Replaces old file with new one
     fclose(temp_file);
-	fclose(file);
-	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	rewind(file);;
 	free(str_buf);
 }
 
@@ -523,27 +524,46 @@ void mov_line(FILE *file, char *path, int ln_from, int ln_to) {
     rename(".temp", path); // Replaces old file with new one
     fclose(temp_file);
 	fclose(file);
-	file = fopen(path, "r"); // Reopens file and returns position to beginning of file
+	rewind(file);
 	free(str_buf);
 	free(str_buf_ex);
 }
 
 /* Outputs the contents of a file with line numbers */
 void fout(FILE *file) {
-	char *str_buf = str_alloc;
+	bool extra_space = true;
+	char chr_buf;
+	int chr_count = 0;
 	fpos_t pos;
 
 	rewind(file);
+	printf(" ┌───────────────────────────────────────────────────────────────────────────┐\n");
 	for (int ln_num = 1;; ln_num++) {
+		printf(" │ %d. ", ln_num);
+		for (;;) {
+			chr_buf = fgetc(file);
+			chr_count++;
+			if (chr_buf == EOF || chr_buf == '\n')
+				break;
+			if (chr_count >= 71) {
+				printf(" │▒\n │    %c", chr_buf);
+				chr_count = 1;
+			} else
+				printf("%c", chr_buf);
+		}
+		for (chr_count; chr_count < 71; chr_count++) {
+			printf(" ");
+		}
+		chr_count = 0;
+		printf(" │▒\n │                                                                           │▒\n");
 		fgetpos(file, &pos);
 		if (fgetc(file) == EOF)
 			break;
 		fsetpos(file, &pos);
-		printf("\t%d. ", ln_num);
-		fgets(str_buf, max_read_size, file);
-		printf("%s", str_buf);
 	}
-	free(str_buf);
+
+	printf(" └───────────────────────────────────────────────────────────────────────────┘▒\n");
+	printf("  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n");
 }
 
 /* Moves position in file to a line */
@@ -561,13 +581,16 @@ void fsetpos_toline(FILE *file, int num) {
 	free(str_buf);
 }
 
-/* Outputs the title */
-void title_fclosed() {
-	system("clear");
-	bold_txt();
-	puts("Bibliographer v1.0\n");
-	reset_txt();
-	printf("\n");
+/* Prints a line in a file to stdout */
+void echo(FILE* file, char *path, int num) {
+	char *str_buf = str_alloc;
+
+	file = fopen(path, "r");
+	free(str_buf);
+	fsetpos_toline(file, num);
+	fgets(str_buf, max_read_size, file);
+	printf("%s", str_buf);
+	rewind(file);
 }
 
 /* Outputs the title and help page */
@@ -575,7 +598,7 @@ void title_help() {
 	char *str_buf = str_alloc;
 
 	system("clear");
-	printf("Bibliographer v1.0 » ");
+	printf("Bibliographer v1.2 » ");
 	bold_txt();
 	puts("Help Page\n");
 	reset_txt();
@@ -596,8 +619,9 @@ void title_help() {
 	puts("clear: Deletes all entries in a bibliography.");
 	puts("close: Closes the current bibliography.");
 	puts("delete: Deletes an entry.");
+	puts("echo: Returns a citation");
 	puts("modify: Modifies an entry.");
-	puts("move: Moves an entry to a certain position.");
+	puts("move: Moves an entry to a position.");
 	puts("refresh: Updates file contents.\n");
 
 	bold_txt();
@@ -605,7 +629,7 @@ void title_help() {
 	reset_txt();
 	puts(" * Citations should be in alphabetical order");
 	puts(" * Use one citation style per document");
-	puts(" * Don't know part of a citation? Press [ENTER] to leave it blank\n");
+	puts(" * Leave all unknown fields blank\n");
 
 	printf("Press [ENTER] to continue.");
 	fgets_nnl(str_buf, max_read_size, stdin);
@@ -615,7 +639,7 @@ void title_help() {
 /* Outputs the title and current file */
 void title_fopen(FILE *file, char *path) {
 	system("clear");
-	printf("Bibliographer v1.0 » ");
+	printf("Bibliographer v1.2 » ");
 	bold_txt();
 	printf("%s\n\n", path);
 	reset_txt();
@@ -627,13 +651,21 @@ void title_fopen(FILE *file, char *path) {
 	printf("\n");
 }
 
+/* Outputs the title */
+void title_fclosed() {
+	system("clear");
+	bold_txt();
+	puts("Bibliographer v1.2\n");
+	reset_txt();
+	printf("\n");
+}
+
 /* Main */
 const int main(void) {
 	char cmd_symbol, *str_input = str_alloc, *path = str_alloc;
 	bool pref_created, auto_refresh, file_open, editing, oper_success, esc;
 	int num_input;
 	FILE *fptr;
-	fpos_t fpos;
 	struct Citation Item;
 
 	/* POPULATE .bibliorc IF NONEXISTANT */
@@ -655,9 +687,8 @@ const int main(void) {
 		/* ----- 'auto_refresh' preference ----- */
 		fsetpos_toline(fptr, 2);
 		fgets(str_input, max_read_size, fptr);
-		if (streq(str_input, "on")) {
+		if (streq(str_input, "on"))
 			auto_refresh = true;
-		}
 
 		/* ----- 'cmd_symbol' preference ----- */
 		fsetpos_toline(fptr, 5);
@@ -769,12 +800,22 @@ const int main(void) {
 				fgets_nnl(str_input, max_read_size, stdin);			
 				if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
 					fptr = fopen(path, "r");
-					num_input = atoi(str_input);
-					del_line(fptr, path, num_input);
+					del_line(fptr, path, atoi(str_input));
 					fclose(fptr);
 				}
 				if (auto_refresh) // Refreshes automatically if 'auto_refresh' option is on
 					title_fopen(fptr, path);
+			} else
+				err_out("No file is open");
+			oper_success = true;
+		}
+
+		/* ----- 'echo' command ----- */
+		if (streq(str_input, "echo")) {
+			if(file_open) {
+				printf("   └ Citation #: ");
+				fgets_nnl(str_input, max_read_size, stdin);
+				echo(fptr, path, atoi(str_input));
 			} else
 				err_out("No file is open");
 			oper_success = true;
@@ -849,9 +890,8 @@ const int main(void) {
 		oper_success = false;
 	}
 
+	remove(".temp");
 	free(str_input);
 	free(path);
 	return EXIT_SUCCESS;
 }
-
-// Citation information credit Amanda Howell @ https://www.youtube.com/channel/UCqCSnXwJSpXNJRR0EHIk7RA/
