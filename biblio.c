@@ -354,6 +354,7 @@ void cite(FILE *file, bool *editing_sw, bool *esc_sw) {
 				}
 
 				fprintf(file, "\n");
+				fclose(file);
 				break;
 			} else if (streq(type, "esc")) {
 				*editing_sw = false;
@@ -374,6 +375,7 @@ void cite(FILE *file, bool *editing_sw, bool *esc_sw) {
 				/* ----- Output ----- */
 				fputs(str_buf, file);
 				fprintf(file, "\n");
+				fclose(file);
 				break;
 
 		} else if (streq(style, "esc")) {
@@ -521,6 +523,7 @@ void mov_line(FILE *file, char *path, int ln_from, int ln_to) {
     remove(path);
     rename(".temp", path); // Replaces old file with new one
     fclose(temp_file);
+	fclose(file);
 	rewind(file);
 	free(str_buf);
 	free(str_buf_ex);
@@ -643,6 +646,7 @@ void title_fopen(FILE *file, char *path) {
 	file = fopen(path, "r");
 	if (file != NULL) {
 		fout(file);
+		fclose(file);
 	}
 	printf("\n");
 }
@@ -728,14 +732,17 @@ const int main(void) {
 					fptr = fopen(".temp", "r");
 					if (editing) { // If came from 'modify' command...
 						fgets(str_input, max_read_size, fptr);
+						fclose(fptr);
 						fptr = fopen(path, "r");
 						mod_line(fptr, path, num_input, str_input);
 						editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
 					} else { // Else...
 						fgets(str_input, max_read_size, fptr);
+						fclose(fptr);
 						fptr = fopen(path, "a");
 						fputs(str_input, fptr);
 					}
+					fclose(fptr);
 					if (auto_refresh) // Refreshes automatically if 'auto_refresh' option is on
 						title_fopen(fptr, path);
 				}
@@ -751,7 +758,8 @@ const int main(void) {
 				if (fptr == NULL) {
 					err_out("Cannot clear file\nInput any key to continue.");
 					break;
-				} 
+				}
+				fclose(fptr);
 				if (auto_refresh) // Refreshes automatically if 'auto_refresh' option is on
 						title_fopen(fptr, path);
 			} else
@@ -781,6 +789,7 @@ const int main(void) {
 				if(!streq(str_input, "esc")) // Breaks if 'esc' is input
 					mod_line(fptr, ".bibliorc", 5, str_input);
 			}
+			fclose(fptr);
 			oper_success = true;
 		}
 
@@ -792,6 +801,7 @@ const int main(void) {
 				if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
 					fptr = fopen(path, "r");
 					del_line(fptr, path, atoi(str_input));
+					fclose(fptr);
 				}
 				if (auto_refresh) // Refreshes automatically if 'auto_refresh' option is on
 					title_fopen(fptr, path);
@@ -879,7 +889,6 @@ const int main(void) {
 		oper_success = false;
 	}
 
-	fclose(fptr);
 	remove(".temp");
 	free(str_input);
 	free(path);
