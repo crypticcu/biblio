@@ -566,6 +566,26 @@ void fout(FILE *file) {
 	printf("  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n"); // End of bibliography UI
 }
 
+int fcount(FILE *file) { // Counts how many lines are in a file
+	char *str_buf = str_alloc;
+	int ln_count = 0;
+	fpos_t pos;
+
+	file = fopen("Default.bib", "r");
+	rewind(file);
+	for (;;) {
+		fgetpos(file, &pos);
+		if (fgetc(file) == EOF)
+			break;
+		fsetpos(file, &pos);
+		fgets(str_buf, max_read_size, file);
+		ln_count++;
+	}
+	fclose(file);
+	free(str_buf);
+	return ln_count;
+}
+
 /* Moves position in file to a line */
 void fsetpos_toline(FILE *file, int num) {
 	char *str_buf = str_alloc;
@@ -797,8 +817,12 @@ const int main(void) {
 		if (streq(str_input, "delete")) {
 			if (file_open) {
 				printf("   └ Citation #: ");
-				fgets_nnl(str_input, max_read_size, stdin);			
-				if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
+				fgets_nnl(str_input, max_read_size, stdin);
+				if (atoi(str_input) < 0 || atoi(str_input) > fcount(fptr)) { // Ensures valid input
+					printf("   ");
+					err_out("Citation does not exist");
+				}
+				else if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
 					fptr = fopen(path, "r");
 					del_line(fptr, path, atoi(str_input));
 					fclose(fptr);
@@ -845,9 +869,10 @@ const int main(void) {
 				printf("   ├ Citation #: ");
 				fgets_nnl(str_input, max_read_size, stdin);
 				fptr = fopen(path, "r");
-				if (atoi(str_input) < 0) // Ensures input over 0
+				if (atoi(str_input) < 0 || atoi(str_input) > fcount(fptr)) // Ensures valid input
 					err_out("Citation does not exist");
 				else if (!streq(str_input, "esc")) { // Breaks if 'esc' is input
+					
 					num_input = atoi(str_input);
 					printf("   └ Move to: ");
 					fgets_nnl(str_input, max_read_size, stdin);
