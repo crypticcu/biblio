@@ -1,4 +1,4 @@
-# Bibliographer v1.3
+# Biblio v1.3
 
 ## Description
 Command-line bibliography creator and editor.
