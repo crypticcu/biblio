@@ -28,8 +28,4 @@ If you would like request a change in the official release or have found a bug, 
 
 *v1.3* - Added licensing information and updated references list. Reworked structure of the program to improve code clarity and user experience. Removed support for dynamic memory allocation.
 
-## Upcoming Features
- * Changing of directory within program
- * Open folders
- * Display breadcrumbs within file
- * Citation and spell checker
+*v1.4* - Program is now argument-driven. Made it so the publisher's name would be italicized to comform to style guidelines. Removed 'open' and 'close' commands. Updated help page.
