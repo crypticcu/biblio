@@ -1,6 +1,6 @@
 /*	LICENSING
 	──────────────────────────────────────────────────────────────────────
-	Biblio v1.3 - command line bibliography creator and editor
+	Biblio v1.4 - command-line bibliography creator and editor
 	Copyright (C) 2020 crypticcu@protonmail.com
 
 	This program is free software: you can redistribute it and/or modify
@@ -33,12 +33,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h> //POSIX-exclusive
-#include "format.h"
-#include "line.h"
+#include <unistd.h> // POSIX-exclusive
 
-#define BUF 256 // Buffer size
+#include "format.h" // Text formatting
+#include "line.h" // File operations by the line
 
+bool pref_created, auto_refresh, editing, oper_success, esc;
 struct Citation {
 	char title[BUF];
 	char first[BUF];
@@ -68,6 +68,30 @@ void biberr(char *string) {
 	printf(" Error: ");
 	txtr();
 	printf("%s\n", string);
+}
+
+void bibecho(FILE *file, char *path, int ln_echo) {
+	char chr_buf, str_buf[BUF];
+	bool italics;
+
+	file = fopen(path, "r");
+	fseekl(file, ln_echo);
+	fseek(file, -1, SEEK_CUR);
+	for (;;) {
+		chr_buf = fgetc(file);
+		if (chr_buf == EOF || chr_buf == '\n')
+			break;
+		else if (chr_buf == '_' && !italics) {
+			txti();
+			italics = true;
+		} else if (chr_buf == '_' && italics) {
+			txtr();
+			italics = false;
+		} else
+			printf("%c", chr_buf);
+	}
+	printf("\n");
+	rewind(file);
 }
 
 /* Creates a citation in 'file'
@@ -170,7 +194,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(", ", file);
 					}
 					if (Item.publisher[0] != 0) {
+						fputs("_", file); // Begin italics
 						fputs(Item.publisher, file);
+						fputs("_", file); // End italics
 						fputs(", ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -187,7 +213,7 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						}
 					}
 					if (Item.year[0] != 0) {
-						if(Item.access[0] == 'y')
+						if (Item.access[0] == 'y')
 							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
 							fputs(Item.month, file);
@@ -200,7 +226,7 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(Item.year, file);
 						if (strcmp(type, "website") == 0) 
 							fputs(", ", file);
-						else 
+						else
 							fputs(". ", file);
 					}
 					if (Item.url[0] != 0) {
@@ -247,7 +273,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(": ", file);
 					}
 					if (Item.publisher[0] != 0) {
+						fputs("_", file); // Begin italics
 						fputs(Item.publisher, file);
+						fputs("_", file); // End italics
 						fputs(". ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -295,7 +323,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(": ", file);
 					}
 					if (Item.publisher[0] != 0) {
+						fputs("_", file); // Begin italics
 						fputs(Item.publisher, file);
+						fputs("_", file); // End italics
 						fputs(", ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -377,12 +407,11 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 
 /* Outputs the contents of 'file' with line numbers */
 void bibout(FILE *file) {
-	bool extra_space = true;
 	char chr_buf;
+	bool italics;
 	int chr_count = 0;
 	fpos_t pos;
 
-	rewind(file);
 	printf(" ┌───────────────────────────────────────────────────────────────────────────┐\n"); // Beginning of bibliography UI
 	for (int ln_num = 1;; ln_num++) {
 		printf(" │ %d. ", ln_num);
@@ -394,6 +423,14 @@ void bibout(FILE *file) {
 			if (chr_count >= 71) {
 				printf(" │▒\n │    %c", chr_buf);
 				chr_count = 1;
+			} else if (chr_buf == '_' && !italics) {
+				txti();
+				italics = true;
+				chr_count--;
+			} else if (chr_buf == '_' && italics) {
+				txtr();
+				italics = false;
+				chr_count--;
 			} else
 				printf("%c", chr_buf);
 		}
@@ -413,10 +450,8 @@ void bibout(FILE *file) {
 
 /* Outputs the header and help page */
 void bibhelp(void) {
-	char str_buf[BUF];
-
 	system("clear");
-	printf("Bibliographer v1.3 » ");
+	printf("Biblio v1.4 » ");
 	txtb();
 	puts("Help Page\n");
 	txtr();
@@ -429,13 +464,11 @@ void bibhelp(void) {
 	puts("config: Configures preferences.");
 	puts("exit: Exits the program.");
 	puts("help: Displays the help page.");
-	puts("open: Opens a bibliography (.bib) file.\n");
 
 	txti();
 	puts("While a bibliography is open...");
 	txtr();
 	puts("clear: Deletes all entries in a bibliography.");
-	puts("close: Closes the current bibliography.");
 	puts("delete: Deletes an entry.");
 	puts("echo: Returns a citation");
 	puts("modify: Modifies an entry.");
@@ -446,74 +479,94 @@ void bibhelp(void) {
 	puts("Tips");
 	txtr();
 	puts(" * Citations should be in alphabetical order");
-	puts(" * Use one citation style per document");
-	puts(" * Leave all unknown fields blank\n");
+	puts(" * Use only one citation style per document");
+	puts(" * Leave all unknown fields blank\n\n\n");
 
 	printf("Press [ENTER] to continue.");
-	fgetsl(str_buf, BUF, stdin);
-}
-
-/* Outputs the header */
-void bibtitle(void) {
-	system("clear");
-	txtb();
-	puts("Bibliographer v1.3\n");
-	txtr();
-	printf("\n");
+	fgetc(stdin);
 }
 
 /* Outputs the header for an open 'file'
- * 'file' points to file name 'path' */
-void bibftitle(FILE *file, char *path) {
+ * 'file' points to file name 'path'
+ * 'open_sw' is used in case of read failure */
+void bibtitle(FILE *file, char *path) {
 	system("clear");
-	printf("Bibliographer v1.3 » ");
+	printf("Biblio v1.4 » ");
 	txtb();
 	printf("%s\n\n", path);
 	txtr();
 	file = fopen(path, "r");
-	if (file != NULL) {
+	if (file == NULL) {
+		txtb();
+		printf("Error: ");
+		txtr();
+		puts("Unable to reach file");
+		exit(EXIT_FAILURE);
+	} else {
 		bibout(file);
 		fclose(file);
+		printf("\n");
 	}
-	printf("\n");
 }
 
 /* Main */
-int main(void) {
-	char cmd_symbol, str_input[BUF], path[BUF];
-	bool pref_created, auto_refresh, file_open, editing, oper_success, esc;
+int main(int argc, char *argv[]) {
+	char cmd_symbol, chr_input, str_input[BUF], path[BUF] = ".bib";
 	int num_input;
 	FILE *fptr;
-	struct Citation Item;
 
-	/** Create configuration file if nonexistant */
-	if (access(".config", R_OK|W_OK) == -1) {
-		fptr = fopen(".config", "a");
-		fprintf(fptr, "Auto-refresh:\noff\n\nCommand symbol:\n>");
-		pref_created = true;
+	/** For invalid argument # **/
+	if (argc > 2) {
+		puts("Usage: biblio [FILE]");
+		puts("Try 'biblio --help' for more information.");
+		exit(EXIT_SUCCESS);
 	}
 
-	/** Create default bibliography if nonexistant **/
-	if (access(".default", R_OK|W_OK) == -1) {
-		fptr = fopen(".default", "a");
+	/** Flags **/
+	if (argc > 1) {
+		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+			puts("Usage: biblio [FILE]");
+			puts("Open and edit bibliography file with name FILE.");
+			puts("Example: biblio 'hello world'");
+			puts("If no FILE is specified, default bibliography will be opened.");
+			puts("If no bibliography file of name FILE is found, one is made.\n");
+
+			puts("Report bugs to: crypticcu@protonmail.com");
+			puts("Biblio git page: <https://github.com/crypticcu/biblio>");
+			exit(EXIT_SUCCESS);
+		}
 	}
 
-	/** Check preferences **/
-	if (access(".config", R_OK|W_OK) != -1 || pref_created) {
-		fptr = fopen(".config", "r");
+	/** Open file **/
+	if (argc > 1) {
+		for (int i = 0;; i++) {
+			path[i] = argv[1][i];
+			if (argv[1][i] == 0)
+				break;
+		}
+		strcat(path, ".bib"); // Ensures that a bibliography file is created
+	}
+	bibtitle(fptr, path);
 
-		/*** Auto-refresh ***/
-		fseekl(fptr, 2);
+	/** Check and apply preferences **/
+	if (access(".conf", R_OK|W_OK) == -1) {
+		fptr = fopen(".conf", "a");
+		fprintf(fptr, "Auto-refresh:\noff\n\nCommand symbol:\n>\n");
+		cmd_symbol = '>';
+	} else {
+		fptr = fopen(".conf", "r");
+		fseekl(fptr, 2); // Auto-refresh
 		fgets(str_input, BUF, fptr);
 		if (strcmp(str_input, "on") == 0)
 			auto_refresh = true;
-
-		/*** Command line symbol ***/
-		fseekl(fptr, 5);
+		fseekl(fptr, 5); // Command-line symbol
 		cmd_symbol = fgetc(fptr);
 	}
 
-	bibtitle();
+	/** Check default bibliography **/
+	if (access(".bib", R_OK|W_OK) == -1) {
+		fptr = fopen(".bib", "a");
+	}
 
 	/** Program loop **/
 	for (;;) {
@@ -522,125 +575,96 @@ int main(void) {
 		printf("%c ", cmd_symbol); // Ensures command line cursor of user's choice
 		fgetsl(str_input, BUF, stdin);
 
-		/*** 'modify' command (file-exclusive) ***/
+		/*** 'modify' command ***/
 		if (strcmp(str_input, "modify") == 0) {
-			if (file_open) {
-				printf("   ├ Citation #: ");
-				fgetsl(str_input, BUF, stdin);
-				num_input = atoi(str_input);
-				if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
-					editing = true; // Allows for 'cite' command to commence right afterwards
-			} else
-				biberr("No file is open");
+			printf("   ├ Citation #: ");
+			fgetsl(str_input, BUF, stdin);
+			num_input = atoi(str_input);
+			if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
+				editing = true; // Allows for 'cite' command to commence right afterwards
 			oper_success = true;
 		}
 
 		/*** 'cite' command ***/
 		if (strcmp(str_input, "cite") == 0 || editing) {
-			fptr = fopen(".temp", "w");
-			switch (file_open) {
-			case 0:
-				file_open = true;
-				strcpy(path, ".default"); // If no file is specified, open default bibliography
-				bibftitle(fptr, path);
-				printf("%c cite\n", cmd_symbol);
-			case 1:
-				bibcite(fptr, &editing, &esc);
-				if(!esc) { // Breaks if 'esc' is input
-					fptr = fopen(".temp", "r");
-					if (editing) { // If came from 'modify' command...
-						fgets(str_input, BUF, fptr);
-						fclose(fptr);
-						fptr = fopen(path, "r");
-						fmodl(fptr, path, num_input, str_input);
-						editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
-					} else { // Else...
-						fgets(str_input, BUF, fptr);
-						fclose(fptr);
-						fptr = fopen(path, "a");
-						fputs(str_input, fptr);
-					}
+			fptr = fopen(".temp", "a");
+			bibcite(fptr, &editing, &esc);
+			if(!esc) { // Breaks if 'esc' is input
+				fptr = fopen(".temp", "r");
+				if (editing) { // If came from 'modify' command...
+					fgets(str_input, BUF, fptr);
 					fclose(fptr);
-					if (auto_refresh) // Refreshes automatically if auto-refresh is on
-						bibftitle(fptr, path);
+					fptr = fopen(path, "r");
+					fmodl(fptr, path, num_input, str_input);
+					editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
+				} else { // Else...
+					fgets(str_input, BUF, fptr);
+					fclose(fptr);
+					fptr = fopen(path, "a");
+					fputs(str_input, fptr);
 				}
-				esc = false;
+				fclose(fptr);
+				if (auto_refresh) // Refreshes automatically if auto-refresh is on
+					bibtitle(fptr, path);
 			}
 			oper_success = true;
 		}
 
-		/*** 'clear' command  (file-exclusive) ***/
+		/*** 'clear' command ***/
 		if (strcmp(str_input, "clear") == 0) {
-			if (file_open) {
-				fptr = fopen(path, "w");
-				if (fptr == NULL) {
-					biberr("Cannot clear file\nInput any key to continue.");
-					break;
-				}
-				fclose(fptr);
-				if (auto_refresh) // Refreshes automatically if auto-refresh is on
-						bibftitle(fptr, path);
-			} else
-				biberr("No file is open");
-			oper_success = true;
-		}
-
-		/*** 'close' command (file-exclusive) ***/
-		if (strcmp(str_input, "close") == 0) {
-			if (file_open) {
-				file_open = false;
-				bibtitle();
-			} else
-				biberr("No file is open");
+			fptr = fopen(path, "w");
+			fclose(fptr);
+			if (auto_refresh) // Refreshes automatically if auto-refresh is on
+					bibtitle(fptr, path);
 			oper_success = true;
 		}
 
 		/*** 'config' command ***/
 		if (strcmp(str_input, "config") == 0) {
 			printf("   ├ Auto-refresh: "); // Configuration for auto-refresh
-			fgetsl(str_input, BUF, stdin);
+			fgets(str_input, BUF, stdin);
 			if(strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-				fptr = fopen(".config", "r");
-				fmodl(fptr, ".config", 2, str_input);
+				if (strcmp(str_input, "on\n") == 0)
+					auto_refresh = true;
+				else if (strcmp(str_input, "off\n") == 0)
+					auto_refresh = false;
+				fptr = fopen(".conf", "r");
+				fmodl(fptr, ".conf", 2, str_input);
 				printf("   └ Command symbol: "); // Configuration for command line symbol
-				fgetsl(str_input, BUF, stdin);
-				if(strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
-					fptr = fopen(".config", "r");
-					fmodl(fptr, ".config", 5, str_input);
+				fgets(str_input, BUF, stdin);
+				if(strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
+					fptr = fopen(".conf", "r");
+					fmodl(fptr, ".conf", 5, str_input);
+					cmd_symbol = str_input[0];
+				}
 			}
 			fclose(fptr);
 			oper_success = true;
 		}
 
-		/*** 'delete' command (file-exclusive) ***/
+		/*** 'delete' command ***/
 		if (strcmp(str_input, "delete") == 0) {
-			if (file_open) {
-				printf("   └ Citation #: ");
-				fgetsl(str_input, BUF, stdin);
-				if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) { // Ensures valid input
-					printf("   ");
-					biberr("Citation does not exist");
-				}
-				else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-					fptr = fopen(path, "r");
-					fdell(fptr, path, atoi(str_input));
-					fclose(fptr);
-				}
-				if (auto_refresh) // Refreshes automatically if auto-refresh is on
-					bibftitle(fptr, path);
-			} else
-				biberr("No file is open");
+			printf("   └ Citation #: ");
+			fgetsl(str_input, BUF, stdin);
+			if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) { // Ensures valid input
+				printf("   ");
+				biberr("Citation does not exist");
+			}
+			else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
+				fptr = fopen(path, "r");
+				fdell(fptr, path, atoi(str_input));
+				fclose(fptr);
+			}
+			if (auto_refresh) // Refreshes automatically if auto-refresh is on
+				bibtitle(fptr, path);
 			oper_success = true;
 		}
 
 		/*** 'echo' command ***/
 		if (strcmp(str_input, "echo") == 0) {
-			if(file_open) {
-				printf("   └ Citation #: ");
-				fgetsl(str_input, BUF, stdin);
-				fechol(fptr, path, atoi(str_input));
-			} else
-				biberr("No file is open");
+			printf("   └ Citation #: ");
+			fgetsl(str_input, BUF, stdin);
+			bibecho(fptr, path, atoi(str_input));
 			oper_success = true;
 		}
 
@@ -654,53 +678,32 @@ int main(void) {
 		/*** 'help' command ***/
 		if (strcmp(str_input, "help") == 0) {
 			bibhelp();
-			if (file_open)
-				bibftitle(fptr, path);
-			else
-				bibtitle();
+			bibtitle(fptr, path);
 			oper_success = true;
 		}
 
 		/*** 'move' command ***/
 		if (strcmp(str_input, "move") == 0) {
-			if(file_open) {
-				printf("   ├ Citation #: ");
+			printf("   ├ Citation #: ");
+			fgetsl(str_input, BUF, stdin);
+			if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) // Ensures valid input
+				biberr("Citation does not exist");
+			else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
+				fptr = fopen(path, "r");
+				num_input = atoi(str_input);
+				printf("   └ Move to: ");
 				fgetsl(str_input, BUF, stdin);
-				if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) // Ensures valid input
-					biberr("Citation does not exist");
-				else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-					fptr = fopen(path, "r");
-					num_input = atoi(str_input);
-					printf("   └ Move to: ");
-					fgetsl(str_input, BUF, stdin);
-					if(strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
-						fmovl(fptr, path, num_input, atoi(str_input));
-				}
-				if (auto_refresh) // Refreshes automatically if auto-refresh is on
-					bibftitle(fptr, path);
-			} else
-				biberr("No file is open");
-			oper_success = true;
-		}
-
-		/*** 'open' command ***/
-		if (strcmp(str_input, "open") == 0) {
-			printf("   └ Bibliography name: ");
-			fgetsl(path, BUF, stdin);
-			strcat(path, ".bib"); // Ensures that a bibliography file is created
-			if (strcmp(path, "esc") != 0) { // Breaks if 'esc' is input
-				file_open = true;
-				bibftitle(fptr, path);
+				if(strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
+					fmovl(fptr, path, num_input, atoi(str_input));
 			}
+			if (auto_refresh) // Refreshes automatically if auto-refresh is on
+				bibtitle(fptr, path);
 			oper_success = true;
 		}
 
-		/*** 'refresh' command (file-exclusive) ***/
+		/*** 'refresh' command ***/
 		if (strcmp(str_input, "refresh") == 0) {
-			if (file_open)
-				bibftitle(fptr, path); // Refreshes the screen
-			else
-				biberr("No file is open");
+			bibtitle(fptr, path); // Refreshes the screen
 			oper_success = true;
 		}
 
@@ -708,9 +711,11 @@ int main(void) {
 		if (!oper_success)
 			biberr("Unknown command");
 
+		esc = false;
 		oper_success = false;
+		
 	}
-
+	
 	remove(".temp");
 	return EXIT_SUCCESS;
 }
