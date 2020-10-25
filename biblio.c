@@ -1,6 +1,6 @@
 /*	LICENSING
 	──────────────────────────────────────────────────────────────────────
-	Biblio v1.4 - command-line bibliography creator and editor
+	Biblio v1.4.1 - command-line bibliography creator and editor
 	Copyright (C) 2020 crypticcu@protonmail.com
 
 	This program is free software: you can redistribute it and/or modify
@@ -76,7 +76,6 @@ void bibecho(FILE *file, char *path, int ln_echo) {
 
 	file = fopen(path, "r");
 	fseekl(file, ln_echo);
-	fseek(file, -1, SEEK_CUR);
 	for (;;) {
 		chr_buf = fgetc(file);
 		if (chr_buf == EOF || chr_buf == '\n')
@@ -421,9 +420,10 @@ void bibout(FILE *file) {
 			if (chr_buf == EOF || chr_buf == '\n')
 				break;
 			if (chr_count >= 71) {
-				printf(" │▒\n │    %c", chr_buf);
+				printf(" │▒\n │    ", chr_buf);
 				chr_count = 1;
-			} else if (chr_buf == '_' && !italics) {
+			}
+			if (chr_buf == '_' && !italics) {
 				txti();
 				italics = true;
 				chr_count--;
@@ -451,7 +451,7 @@ void bibout(FILE *file) {
 /* Outputs the header and help page */
 void bibhelp(void) {
 	system("clear");
-	printf("Biblio v1.4 » ");
+	printf("Biblio v1.4.1 » ");
 	txtb();
 	puts("Help Page\n");
 	txtr();
@@ -491,11 +491,11 @@ void bibhelp(void) {
  * 'open_sw' is used in case of read failure */
 void bibtitle(FILE *file, char *path) {
 	system("clear");
-	printf("Biblio v1.4 » ");
+	printf("Biblio v1.4.1 » ");
 	txtb();
 	printf("%s\n\n", path);
 	txtr();
-	file = fopen(path, "r");
+	file = fopen(path, "a");
 	if (file == NULL) {
 		txtb();
 		printf("Error: ");
@@ -503,6 +503,7 @@ void bibtitle(FILE *file, char *path) {
 		puts("Unable to reach file");
 		exit(EXIT_FAILURE);
 	} else {
+		file = fopen(path, "r");
 		bibout(file);
 		fclose(file);
 		printf("\n");
@@ -580,7 +581,9 @@ int main(int argc, char *argv[]) {
 			printf("   ├ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
 			num_input = atoi(str_input);
-			if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
+			if (num_input < 1 || num_input > fcountl(fptr, path)) {
+				biberr("Citation does not exist");
+			} else if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
 				editing = true; // Allows for 'cite' command to commence right afterwards
 			oper_success = true;
 		}
@@ -646,7 +649,7 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "delete") == 0) {
 			printf("   └ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) { // Ensures valid input
+			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(fptr, path)) { // Ensures valid input
 				printf("   ");
 				biberr("Citation does not exist");
 			}
@@ -664,7 +667,11 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "echo") == 0) {
 			printf("   └ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			bibecho(fptr, path, atoi(str_input));
+			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(fptr, path)) { // Ensures valid input
+				printf("   ");
+				biberr("Citation does not exist");
+			} else
+				bibecho(fptr, path, atoi(str_input));
 			oper_success = true;
 		}
 
@@ -686,7 +693,7 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "move") == 0) {
 			printf("   ├ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 0 || atoi(str_input) > fcountl(fptr, path)) // Ensures valid input
+			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(fptr, path)) // Ensures valid input
 				biberr("Citation does not exist");
 			else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
 				fptr = fopen(path, "r");
