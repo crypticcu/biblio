@@ -1,6 +1,6 @@
 /*	LICENSING
 	──────────────────────────────────────────────────────────────────────
-	Biblio v1.4.2 - command-line bibliography creator and editor
+	Biblio - command-line bibliography creator and editor
 	Copyright (C) 2020 crypticcu@protonmail.com
 
 	This program is free software: you can redistribute it and/or modify
@@ -80,10 +80,10 @@ void bibecho(FILE *file, char *path, int ln_echo) {
 		chr_buf = fgetc(file);
 		if (chr_buf == EOF || chr_buf == '\n')
 			break;
-		else if (chr_buf == '_' && !italics) {
+		else if (chr_buf == '`' && !italics) {
 			txti();
 			italics = true;
-		} else if (chr_buf == '_' && italics) {
+		} else if (chr_buf == '`' && italics) {
 			txtr();
 			italics = false;
 		} else
@@ -451,7 +451,7 @@ void bibout(FILE *file) {
 /* Outputs the header and help page */
 void bibhelp(void) {
 	system("clear");
-	printf("Biblio v1.4.2 » ");
+	printf("Biblio v1.4.3 » ");
 	txtb();
 	puts("Help Page\n");
 	txtr();
@@ -491,7 +491,7 @@ void bibhelp(void) {
  * 'open_sw' is used in case of read failure */
 void bibtitle(FILE *file, char *path) {
 	system("clear");
-	printf("Biblio v1.4.2 » ");
+	printf("Biblio v1.4.3 » ");
 	txtb();
 	printf("%s\n\n", path);
 	txtr();
