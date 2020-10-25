@@ -1,6 +1,6 @@
 /*	LICENSING
 	──────────────────────────────────────────────────────────────────────
-	Biblio v1.4.1 - command-line bibliography creator and editor
+	Biblio v1.4.2 - command-line bibliography creator and editor
 	Copyright (C) 2020 crypticcu@protonmail.com
 
 	This program is free software: you can redistribute it and/or modify
@@ -193,9 +193,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(", ", file);
 					}
 					if (Item.publisher[0] != 0) {
-						fputs("_", file); // Begin italics
+						fputs("`", file); // Begin italics
 						fputs(Item.publisher, file);
-						fputs("_", file); // End italics
+						fputs("`", file); // End italics
 						fputs(", ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -272,9 +272,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(": ", file);
 					}
 					if (Item.publisher[0] != 0) {
-						fputs("_", file); // Begin italics
+						fputs("`", file); // Begin italics
 						fputs(Item.publisher, file);
-						fputs("_", file); // End italics
+						fputs("`", file); // End italics
 						fputs(". ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -322,9 +322,9 @@ void bibcite(FILE *file, bool *editing_sw, bool *esc_sw) {
 						fputs(": ", file);
 					}
 					if (Item.publisher[0] != 0) {
-						fputs("_", file); // Begin italics
+						fputs("`", file); // Begin italics
 						fputs(Item.publisher, file);
-						fputs("_", file); // End italics
+						fputs("`", file); // End italics
 						fputs(", ", file);
 					}
 					if (Item.publication[0] != 0) {
@@ -423,11 +423,11 @@ void bibout(FILE *file) {
 				printf(" │▒\n │    ", chr_buf);
 				chr_count = 1;
 			}
-			if (chr_buf == '_' && !italics) {
+			if (chr_buf == '`' && !italics) {
 				txti();
 				italics = true;
 				chr_count--;
-			} else if (chr_buf == '_' && italics) {
+			} else if (chr_buf == '`' && italics) {
 				txtr();
 				italics = false;
 				chr_count--;
@@ -451,7 +451,7 @@ void bibout(FILE *file) {
 /* Outputs the header and help page */
 void bibhelp(void) {
 	system("clear");
-	printf("Biblio v1.4.1 » ");
+	printf("Biblio v1.4.2 » ");
 	txtb();
 	puts("Help Page\n");
 	txtr();
@@ -491,7 +491,7 @@ void bibhelp(void) {
  * 'open_sw' is used in case of read failure */
 void bibtitle(FILE *file, char *path) {
 	system("clear");
-	printf("Biblio v1.4.1 » ");
+	printf("Biblio v1.4.2 » ");
 	txtb();
 	printf("%s\n\n", path);
 	txtr();
