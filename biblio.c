@@ -35,10 +35,11 @@
 #include <string.h>
 #include <unistd.h> // POSIX-exclusive
 
+#define BUF 256 // Buffer size
+#define C_DEF {"","","","","","","","","","","","","","","",""} // Initial conditions of CITATION type
+
 #include "format.h" // Text formatting
 #include "line.h" // File operations by the line
-
-#define C_DEF {"","","","","","","","","","","","","","","",""}
 
 bool pref_created, auto_refresh, editing, oper_success, esc;
 typedef struct _citation_struct {
@@ -450,7 +451,7 @@ void bibout(char *path) {
 /* Outputs the header and help page */
 void bibhelp(void) {
 	system("clear");
-	printf(" 1.5.3                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n");
+	printf(" 1.5.4                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n");
 	/** Help Page **/
 	puts(  "   ↑                                                                 ↑       ↑");
 	printf(  "%sVersion                                                             File   Style%s\n\n", E_ITL, E_CLR);
@@ -477,7 +478,7 @@ void bibtitle(char *path, char *label) {
 	FILE *file = fopen(path, "a");
 
 	system("clear");
-	printf(" 1.5.3        ");
+	printf(" 1.5.4        ");
 	for (int i = 0; i < 63 - strlen(path) - strlen(label); i++)
 		printf(" ");
 	printf("%s  %s\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n", path, label);
@@ -490,7 +491,7 @@ void bibtitle(char *path, char *label) {
 
 /* Main */
 int main(int argc, char *argv[]) {
-	char cmd_symbol, chr_input, str_input[BUF], label[BUF], path[BUF];
+	char cmd_symbol, chr_input, str_input[BUF], label[BUF], path[62];
 	int num_input;
 	FILE *fptr;
 
@@ -522,6 +523,7 @@ int main(int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 		strncpy(path, argv[1], 62); // Any file name over 62 characters would overflow status bar
+		path[strlen(path) + 1] = 0;
 		strcat(path, ".bib"); // Ensures that a bibliography file is created
 	} else // No arguments
 		strcpy(path, ".bib");
