@@ -397,17 +397,10 @@ void bibout(char *path) {
 	int chr_count = 0;
 	FILE *file = fopen(path, "r");
 
-	for (;;) {
-		if (fgetc(file) == '\n')
-			break;
-	}
+	fseekl(file, 2);
 	chr_chk = fgetc(file);
 	if (chr_chk != EOF) {
-		rewind(file);
-		for (;;) {
-			if (fgetc(file) == '\n')
-				break;
-		}
+		fseekl(file, 2);
 		fseek(file, -1, SEEK_CUR);
 		printf(" ┌───────────────────────────────────────────────────────────────────────────┐\n"); // Beginning of bibliography UI
 		for (int ln_num = 1;; ln_num++) {
@@ -457,7 +450,7 @@ void bibout(char *path) {
 /* Outputs the header and help page */
 void bibhelp(void) {
 	system("clear");
-	printf(" 1.5.0                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n");
+	printf(" 1.5.3                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n");
 	/** Help Page **/
 	puts(  "   ↑                                                                 ↑       ↑");
 	printf(  "%sVersion                                                             File   Style%s\n\n", E_ITL, E_CLR);
@@ -484,7 +477,7 @@ void bibtitle(char *path, char *label) {
 	FILE *file = fopen(path, "a");
 
 	system("clear");
-	printf(" 1.5.0        ");
+	printf(" 1.5.3        ");
 	for (int i = 0; i < 63 - strlen(path) - strlen(label); i++)
 		printf(" ");
 	printf("%s  %s\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n", path, label);
@@ -502,12 +495,12 @@ int main(int argc, char *argv[]) {
 	FILE *fptr;
 
 	/** Check # of arguments **/
-	if (argc > 2) {
+	if (argc > 2) { // Two or more arguments
 		puts("Usage: biblio [FILE]");
 		puts("Try 'biblio --help' for more information.");
 		exit(EXIT_SUCCESS);
 	}
-	if (argc > 1) {
+	if (argc == 2) { // One argument
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
 			puts("Usage: biblio [FILE]");
 			puts("Example: biblio 'hello world'");
@@ -517,7 +510,7 @@ int main(int argc, char *argv[]) {
 			puts("If no bibliography file of name FILE is found, one is made.\n");
 
 			puts("Optional flags");
-			puts("  -h, --h\tShow help\n");
+			puts("  -h, --help\tShow help\n");
 
 			puts("Report bugs to: crypticcu@protonmail.com");
 			puts("Github page:    https://github.com/crypticcu/biblio");
@@ -528,9 +521,9 @@ int main(int argc, char *argv[]) {
 			puts("Try 'biblio --help' for more information.");
 			exit(EXIT_FAILURE);
 		}
-		strncpy(path, argv[1], 261);
+		strncpy(path, argv[1], 62); // Any file name over 62 characters would overflow status bar
 		strcat(path, ".bib"); // Ensures that a bibliography file is created
-	} else
+	} else // No arguments
 		strcpy(path, ".bib");
 
 	/** Check file availability **/
@@ -546,7 +539,7 @@ int main(int argc, char *argv[]) {
 	if (fgetc(fptr) == EOF) { // Add default label if file is empty
 		fclose(fptr);
 		fptr = fopen(path, "w");
-		fputs("#All\n", fptr);
+		fputs("#All\n", fptr); // Default styling label
 	}
 	fclose(fptr);
 	fptr = fopen(path, "r");
@@ -594,8 +587,8 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "modify") == 0 || strcmp(str_input, "m") == 0) {
 			printf("   ├ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			num_input = atoi(str_input);
-			if (num_input < 1 || num_input > fcountl(path)) {
+			num_input = atoi(str_input) + 1;
+			if (num_input < 2 || num_input > fcountl(path) - 1) {
 				biberr("Citation does not exist");
 			} else if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
 				editing = true; // Allows for 'cite' command to commence right afterwards
@@ -665,12 +658,12 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "delete") == 0 || strcmp(str_input, "d") == 0) {
 			printf("   └ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path)) { // Ensures valid input
+			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path) - 1) { // Ensures valid input
 				printf("   ");
 				biberr("Citation does not exist");
 			}
 			else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-				fdell(path, atoi(str_input));
+				fdell(path, atoi(str_input) + 1);
 			}
 			if (auto_refresh) // Refreshes automatically if auto-refresh is on
 				bibtitle(path, label);
@@ -681,7 +674,7 @@ int main(int argc, char *argv[]) {
 		if (strcmp(str_input, "echo") == 0 || strcmp(str_input, "e") == 0) {
 			printf("   └ Citation #: ");
 			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path)) { // Ensures valid input
+			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path) - 1) { // Ensures valid input
 				printf("   ");
 				biberr("Citation does not exist");
 			} else
