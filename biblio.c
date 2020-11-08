@@ -34,19 +34,16 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h> // POSIX-exclusive
+#include <ioplus.h> // Additional I/O functions and macros
 
-#define BUF 256 // Buffer size
-#define C_DEF {"","","","","","","","","","","","","","","",""} // Initial conditions of CITATION type
-
-#include "format.h" // Text formatting
-#include "line.h" // File operations by the line
+/* #define DEBUG */ // Uncomment to prevent screen clearing
+#define VER		"1.5.5" // Program version
+#define C_DEF	{0,0,X,X,X,X,X,X,X,X,X,X,0,0,0,0} // Initial conditions of CITATION type 
 
 bool pref_created, auto_refresh, editing, oper_success, esc;
 typedef struct _citation_struct {
-	char title[BUF], first[BUF], last[BUF], others[BUF];
-	char city[BUF], publisher[BUF], publication[BUF], issue[BUF], page[BUF];
-	char website[BUF], url[BUF], doi[BUF];
-	char month[BUF], day[BUF], year[BUF], access[BUF];
+	char others, access, *title, *first, *last, *city, *publisher, *publication, *website, *url, *doi, *month;
+	int issue, page, day, year;
 } CITATION;
 
 /* Outputs an error with message 'string' */
@@ -56,385 +53,310 @@ void biberr(char *string) {
 
 /* Prints the line 'ln_echo' from file 'path' onto the screen */
 void bibecho(char *path, int ln_echo) {
-	char chr_buf, str_buf[BUF];
+	int size = fcountl(path);
+	char chr;
 	bool italics;
 	FILE *file = fopen(path, "r");
 
 	fseekl(file, ln_echo);
-	for (;;) {
-		chr_buf = fgetc(file);
-		if (chr_buf == EOF || chr_buf == '\n')
-			break;
-		else if (chr_buf == '`' && !italics) {
+	for (; (chr = fgetchr(file)) != EOF && chr != '\n'; ) {
+		if (chr == '`' && !italics) {
 			printf("%s", E_ITL);
 			italics = true;
-		} else if (chr_buf == '`' && italics) {
+		} else if (chr == '`' && italics) {
 			printf("%s", E_CLR);
 			italics = false;
 		} else
-			printf("%c", chr_buf);
+			printf("%c", chr);
 	}
 	printf("\n");
 	fclose(file);
 }
 
 /* Creates a citation in 'file'
- * 'esc_sw' is used in case the client wishes to exit the command */
-void bibcite(FILE *file, char *label, bool *esc_sw) {
-	char str_buf[BUF], style[BUF], type[BUF];
+ * 'escape' is used in case the client wishes to exit the command */
+void bibcite(FILE *file, char *label, bool *escape) {
+	char *str = NULL, *style = NULL, *type = NULL;
 	bool manual;
 	CITATION Item = C_DEF;
 
 	for (;;) {
 		if (strcmp(label, "All") == 0) {
 			printf("   └ Style: ");
-			fgetsl(style, BUF, stdin);
+			style = agetstr();
 		} else {
+			style = (char *) malloc(strlen(label) + 1);
 			strcpy(style, slower(label));
 			printf("   └ Style: %s\n", style);
 		}
 		if (strcmp(style, "esc") == 0) {
-			*esc_sw = true;
+			*escape = true;
 			break;
 
-		/** Styled citations **/
+		/* Styled citations */
 		} else if (strcmp(style, "mla") == 0 || strcmp(style, "apa") == 0 || strcmp(style, "chicago") == 0) {
 			printf("      └ Type: ");
-			fgetsl(type, BUF, stdin);
+			type = agetstr();
 			if (strcmp(type, "website") == 0 || strcmp(type, "book") == 0 || strcmp(type, "article") == 0) {
 
-				/*** General Attributes ***/
+				/* General Attributes */
 				printf("         ├ Title: ");
-				fgetsl(Item.title, BUF, stdin);
+				Item.title = agetstr();
 				printf("         ├ Author\n");
 				printf("         │  ├ First: ");
-				fgetsl(Item.first, BUF, stdin);
+				Item.first = agetstr();
 				printf("         │  ├ Last: ");
-				fgetsl(Item.last, BUF, stdin);
+				Item.last = agetstr();
 				printf("         │  └ Others? (y/n): ");
-				fgetsl(Item.others, BUF, stdin);
+				Item.others = getchr();
 
-				/*** Website-specific attributes ***/
+				/* Website-specific attributes */
 				if (strcmp(type, "website") == 0) {
 					if (strcmp(style, "apa") == 0) {
 						printf("         ├ URL: ");
-					} else
+					} else {
 						printf("         ├ Website: ");
-						fgetsl(Item.website, BUF,stdin);
+						Item.website = agetstr();
 						printf("         │  └ URL: ");
-					fgetsl(Item.url, BUF, stdin);
+					}
+					Item.url = agetstr();
 				}
 
-				/*** Website/book-specific attributes ***/
+				/* Website/book-specific attributes */
 				if (strcmp(type, "website") == 0 && strcmp(style, "apa") != 0|| strcmp(type, "book") == 0) {
 					printf("         ├ Publisher: ");
-					fgetsl(Item.publisher, BUF,stdin);
+					Item.publisher = agetstr();
 				}
 
-				/*** Book-specific attributes ***/
+				/* Book-specific attributes */
 				if (strcmp(type, "book")  == 0 && strcmp(style, "mla") != 0) {
 					printf("         │  └ City: ");
-					fgetsl(Item.city, BUF, stdin);
+					Item.city = agetstr();
 				}
 
-				/*** Article-specific attributes ***/
+				/* Article-specific attributes */
 				if (strcmp(type, "article") == 0) {
 					printf("         ├ Publication: ");
-					fgetsl(Item.publication, BUF, stdin);
+					Item.publication = agetstr();
 					printf("         │  ├ Issue #: ");
-					fgetsl(Item.issue, BUF, stdin);
+					Item.issue = getint();
 					printf("         │  ├ Page(s): ");
-					fgetsl(Item.page, BUF, stdin);
+					Item.page = getint();
 					printf("         │  └ DOI #: ");
-					fgetsl(Item.doi, BUF, stdin);
+					Item.doi = agetstr();
 				}
 
-				/*** Date attributes ***/
+				/* Date attributes */
 				printf("         └ Date\n");
 				printf("            ├ Year: ");
-				fgetsl(Item.year, BUF, stdin);
-				if (Item.year[0] != 0) {
+				Item.year = getint();
+				if (Item.year != 0) {
 					printf("            ├ Month: ");
-					fgetsl(Item.month, BUF,stdin);
+					Item.month = agetstr();
 					if (Item.month[0] != 0) {
 						printf("            ├ Day: ");
-						fgetsl(Item.day, BUF,stdin);
+						Item.day = getint();
 					}
 				printf("            └ Access date? (y/n): ");
-				fgetsl(Item.access, BUF, stdin);
+				Item.access = getchr();
 				}
 
-				/*** MLA output ***/
+				/* MLA output */
 				if (strcmp(style, "mla") == 0) {
 					if (Item.first[0] != 0 && Item.last[0] != 0) {
-						fputs(Item.last, file);
-						fputs(", ", file);
-						fputs(Item.first, file);
-						if (strcmp(Item.others, "y") == 0)
+						fprintf(file, "%s, %s", Item.last, Item.first);
+						if (Item.others == 'y')
 							fputs(" et al", file);
 						fputs(". ", file);
 					}
-					if (Item.title[0] != 0) {
-						fputs("\"", file);
-						fputs(Item.title, file);
-						fputs(".\" ", file);
-					}
-					if (Item.website[0] != 0 && strcmp(type, "website") == 0) {
-						fputs(Item.website, file);
-						fputs(", ", file);
-					}
-					if (Item.publisher[0] != 0) {
-						fputs("`", file); // Begin italics
-						fputs(Item.publisher, file);
-						fputs("`", file); // End italics
-						fputs(", ", file);
-					}
+					if (Item.title[0] != 0)
+						fprintf(file, "\"%s.\" ", Item.title);
+					if (Item.website[0] != 0 && strcmp(type, "website") == 0)
+						fprintf(file, "%s, ", Item.website);
+					if (Item.publisher[0] != 0)
+						fprintf(file, "`%s`, ", Item.publisher);
 					if (Item.publication[0] != 0) {
-						fputs(Item.publication, file);
-						fputs(" ", file);
-						if (Item.issue[0] != 0) {
-							fputs("#", file);
-							fputs(Item.issue, file);
-							fputs(", ", file);
-							if (Item.page[0] != 0) {
-								fputs(Item.page, file);
-								fputs(", ", file);
-							}
+						fprintf(file, "%s ", Item.publication);
+						if (Item.issue != 0) {
+							fprintf(file, "#%d, ", Item.issue);
+							if (Item.page != 0)
+								fprintf(file, "%d, ", Item.page);
 						}
 					}
-					if (Item.year[0] != 0) {
-						if (strcmp(Item.access, "y") == 0)
+					if (Item.year != 0) {
+						if (Item.access == 'y')
 							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
-							fputs(Item.month, file);
-							fputs(" ", file);
-							if (Item.day[0] != 0) {
-								fputs(Item.day, file);
-								fputs(", ", file); 
-							}
+							fprintf(file, "%s ", Item.month);
+							if (Item.day != 0)
+								fprintf(file, "%d, ", Item.day);
 						}
-						fputs(Item.year, file);
-						if (strcmp(type, "website") == 0) 
+						fprintf(file, "%d", Item.year);
+						if (strcmp(type, "website") == 0)
 							fputs(", ", file);
 						else
 							fputs(". ", file);
 					}
-					if (Item.url[0] != 0) {
-						fputs(Item.url, file);
-						fputs(". ", file);
-					}
-					if (Item.doi[0] != 0) {
-						fputs("doi:", file);
-						fputs(Item.doi, file);
-						fputs(". ", file);
-					}
+					if (Item.url[0] != 0)
+						fprintf(file, "%s. ", Item.url);
+					if (Item.doi[0] != 0)
+						fprintf(file, "doi:%s. ", Item.doi);
 
-				/*** APA output ***/
+				/* APA output */
 				} else if (strcmp(style, "apa") == 0) {
 					if (Item.first[0] != 0 && Item.last[0] != 0) {
-						fputs(Item.last, file);
-						fputs(", ", file);
-						fputs(Item.first, file);
-						if (strcmp(Item.others, "y") == 0)
+						fprintf(file, "%s, %s", Item.last, Item.first);
+						if (Item.others == 'y')
 							fputs(" et al", file);
 						fputs(". ", file);
 					}
-					if (Item.year[0] != 0) {
+					if (Item.year != 0) {
 						fputs("(", file);
-						if(strcmp(Item.access, "y") == 0)
+						if(Item.access == 'y')
 							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
-							fputs(Item.month, file);
-							fputs(" ", file);
-							if (Item.day[0] != 0) {
-								fputs(Item.day, file);
-								fputs(", ", file);
-							}
+							fprintf(file, "%s ", Item.month);
+							if (Item.day != 0)
+								fprintf(file, "%d, ", Item.day);
 						}
-						fputs(Item.year, file);
-						fputs("). ", file);
+						fprintf(file, "%d). ", Item.year);
 					}
-					if (Item.title[0] != 0) {
-						fputs(Item.title, file);
-						fputs(". ", file);
-					}
-					if (Item.city[0] != 0) {
-						fputs(Item.city, file);
-						fputs(": ", file);
-					}
-					if (Item.publisher[0] != 0) {
-						fputs("`", file); // Begin italics
-						fputs(Item.publisher, file);
-						fputs("`", file); // End italics
-						fputs(". ", file);
-					}
+					if (Item.title[0] != 0)
+						fprintf(file, "%s. ", Item.title);
+					if (Item.city[0] != 0)
+						fprintf(file, "%s: ", Item.city);
+					if (Item.publisher[0] != 0)
+						fprintf(file, "`%s`. ", Item.publisher);
 					if (Item.publication[0] != 0) {
-						fputs(Item.publication, file);
-						fputs(", ", file);
-						if (Item.issue[0] != 0) {
-							fputs("#", file);
-							fputs(Item.issue, file);
-							fputs(", ", file);
-							if (Item.page[0] != 0) {
-								fputs(Item.page, file);
-								fputs(". ", file);
-							}
+						fprintf(file, "%s, ", Item.publication);
+						if (Item.issue != 0) {
+							fprintf(file, "#%d, ", Item.issue);
+							if (Item.page != 0)
+								fprintf(file, "%d. ", Item.page);
 						}
 					}
-					if (Item.url[0] != 0) {
-						fputs("Retrieved from ", file);
-						fputs(Item.url, file);
-						fputs(". ", file);
-					}
-					if (Item.doi[0] != 0) {
-						fputs("https://www.doi.org/", file);
-						fputs(Item.doi, file);
-						fputs("doi:", file);
-					}
+					if (Item.url[0] != 0)
+						fprintf(file, "Retrieved from %s. ", Item.url);
+					if (Item.doi[0] != 0)
+						fprintf(file, "https://www.doi.org/%s. ", Item.doi);
 				
-				/*** Chicago-style output ***/
+				/* Chicago-style output */
 				} else if (strcmp(style, "chicago") == 0) {
 					if (Item.first[0] != 0 && Item.last[0] != 0) {
-						fputs(Item.last, file);
-						fputs(", ", file);
-						fputs(Item.first, file);
-						if (strcmp(Item.others, "y") == 0)
+						fprintf(file, "%s, %s", Item.last, Item.first);
+						if (Item.others == 'y')
 							fputs(" et al", file);
 						fputs(". ", file);
 					}
 					if (Item.title[0] != 0) {
-						if (strcmp(type, "book") != 0) {
-							fputs("\"", file);
-							fputs(Item.title, file);
-							fputs(".\" ", file);
-						}
-						fputs(Item.title, file);
-						fputs(". ", file);
+						if (strcmp(type, "book") != 0)
+							fprintf(file, "\"%s.\" ", Item.title);
+						else
+							fprintf(file, "%s. ", Item.title);
 					}
-					if (Item.city[0] != 0) {
-						fputs(Item.city, file);
-						fputs(": ", file);
-					}
-					if (Item.publisher[0] != 0) {
-						fputs("`", file); // Begin italics
-						fputs(Item.publisher, file);
-						fputs("`", file); // End italics
-						fputs(", ", file);
-					}
+					if (Item.city[0] != 0)
+						fprintf(file, "%s: ", Item.city);
+					if (Item.publisher[0] != 0)
+						fprintf(file, "`%s`, ", Item.publisher);
 					if (Item.publication[0] != 0) {
-						fputs(Item.publication, file);
-						fputs(", ", file);
-						if (Item.issue[0] != 0) {
-							fputs(Item.issue, file);
-							fputs(" ", file);
-						}
+						fprintf(file, "%s, ", Item.publication);
+						if (Item.issue != 0)
+							fprintf(file, "%d ", Item.issue);
 					}
-					if (Item.year[0] != 0) {
+					if (Item.year != 0) {
 						if (strcmp(type, "article") == 0)
 							fputs("(", file);
-						if(strcmp(Item.access, "y") == 0)
+						if(Item.access == 'y')
 							fputs("accessed ", file);
 						if (Item.month[0] != 0) {
-							fputs(Item.month, file);
-							fputs(" ", file);
-							if (Item.day[0] != 0) {
-								fputs(Item.day, file);
-								fputs(", ", file);
-							}
+							fprintf(file, "%s ", Item.month);
+							if (Item.day != 0)
+								fprintf(file, "%d, ", Item.day);
 						}
-						fputs(Item.year, file);
+						fprintf(file, "%d", Item.year);
 						if (strcmp(type, "article") == 0)
 							fputs("): ", file);
 						else
 							fputs(". ", file);
 					}
-					if (Item.page[0] != 0) {
-						fputs(Item.page, file);
-						fputs(". ", file);
-					}
-					if (Item.url[0] != 0) {
-						fputs(Item.url, file);
-						fputs(". ", file);
-					}
-					if (Item.doi[0] != 0) {
-						fputs("doi:", file);
-						fputs(Item.doi, file);
-						fputs(". ", file);
-					}
+					if (Item.page != 0)
+						fprintf(file, "%d. ", Item.page);
+					if (Item.url[0] != 0)
+						fprintf(file, "%s. ", Item.url);
+					if (Item.doi[0] != 0)
+						fprintf(file, "doi:%s. ", Item.doi);
 				}
 
 				fprintf(file, "\n");
 				fclose(file);
 				break;
 			} else if (strcmp(type, "esc") == 0) {
-				*esc_sw = true;
+				*escape = true;
 				break;
 			} else {
 				printf("      ");
 				biberr("Unknown citation type\n\t          Use \"website\", \"book\", or \"article\"");
 			}
 	
-		/** Plain citations **/
+		/* Plain citations */
 		} else {
 			printf("      └ Manual entry: ");
-			fgetsl(str_buf, BUF, stdin);
-			if (str_buf[0] != 0) {
-				fputs(str_buf, file);
-				fputs(" \n", file);
-			} else {;
-				*esc_sw = true;
-			}
+			str = agetstr();
+			if (str[0] != 0)
+				fprintf(file, "%s \n", str);
+			else
+				*escape = true;
 			fclose(file);
 			break;
 		}
 
 	}
+	bin(13, Item.title, Item.first, Item.last, Item.city, Item.publisher, Item.publication, Item.website, Item.url, Item.doi, Item.month, str, style, type);
 }
 
 /* Outputs the contents of 'file' with line numbers */
 void bibout(char *path) {
-	int chr_buf, chr_chk;
+	int chrA, chrB, chr_count = 0;
 	bool italics, empty;
-	int chr_count = 0;
 	FILE *file = fopen(path, "r");
 
 	fseekl(file, 2);
-	chr_chk = fgetc(file);
-	if (chr_chk != EOF) {
+	chrB = fgetchr(file);
+	if (chrB != EOF) {
 		fseekl(file, 2);
 		fseek(file, -1, SEEK_CUR);
 		printf(" ┌───────────────────────────────────────────────────────────────────────────┐\n"); // Beginning of bibliography UI
 		for (int ln_num = 1;; ln_num++) {
-			chr_buf = fgetc(file);
-			chr_chk = fgetc(file);
-			if ((chr_buf == '\n' && chr_chk == EOF) || (chr_buf == EOF && chr_chk == EOF))
+			chrA = fgetchr(file);
+			chrB = fgetchr(file);
+			if ((chrA == '\n' && chrB == EOF) || (chrA == EOF && chrB == EOF))
 				break;
-			ungetc(chr_chk, file);
+			ungetc(chrB, file);
 			printf(" │ %d. ", ln_num);
 			for (;;) {
-				chr_buf = fgetc(file);
-				chr_chk = fgetc(file);
-				ungetc(chr_chk, file);
+				chrA = fgetchr(file);
+				chrB = fgetchr(file);
+				ungetc(chrB, file);
 				chr_count++;
-				if (chr_chk == '\n') {
+				if (chrB == '\n') {
 					break;
 				}
-				if (chr_buf == EOF || chr_buf == '\n')
+				if (chrA == EOF || chrA == '\n')
 					break;
 				if (chr_count >= 71) {
 					printf(" │▒\n │    ");
 					chr_count = 1;
 				}
-				if (chr_buf == '`' && !italics) {
+				if (chrA == '`' && !italics) {
 					printf("%s", E_ITL);
 					italics = true;
 					chr_count--;
-				} else if (chr_buf == '`' && italics) {
+				} else if (chrA == '`' && italics) {
 					printf("%s", E_CLR);
 					italics = false;
 					chr_count--;
 				} else
-					printf("%c", chr_buf);
+					printf("%c", chrA);
 			}
 			for (chr_count; chr_count < 71; chr_count++) {
 				printf(" ");
@@ -442,17 +364,18 @@ void bibout(char *path) {
 			chr_count = 0;
 			printf(" │▒\n │                                                                           │▒\n");
 		}
-		printf(" └───────────────────────────────────────────────────────────────────────────┘▒\n");
-		printf("  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n"); // End of bibliography UI
+		printf(" └───────────────────────────────────────────────────────────────────────────┘▒\n  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n"); // End of bibliography UI
 	}
 	fclose(file);
 }
 
 /* Outputs the header and help page */
 void bibhelp(void) {
+	#ifndef	DEBUG
 	system("clear");
-	printf(" 1.5.4                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n");
-	/** Help Page **/
+	#endif
+	printf(" %s                                                           Help Page  n/a\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n", VER);
+	/* Help Page */
 	puts(  "   ↑                                                                 ↑       ↑");
 	printf(  "%sVersion                                                             File   Style%s\n\n", E_ITL, E_CLR);
 
@@ -468,7 +391,7 @@ void bibhelp(void) {
 	printf("%sr%sefresh: Updates file contents.\n\n", E_UND, E_CLR);
 
 	printf("Press [ENTER] to continue.");
-	fgetc(stdin);
+	getchr();
 }
 
 /* Outputs the header for an open 'file'
@@ -477,25 +400,27 @@ void bibhelp(void) {
 void bibtitle(char *path, char *label) {
 	FILE *file = fopen(path, "a");
 
-	system("clear");
-	printf(" 1.5.4        ");
-	for (int i = 0; i < 63 - strlen(path) - strlen(label); i++)
+	#ifndef DEBUG
+	system("clear"); // Leaves no trace of previous display
+	#endif
+	printf(" %s  ", VER);
+	for (int i = 0; i < 69 - strlen(path) - strlen(label); i++)
 		printf(" ");
 	printf("%s  %s\n⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\n", path, label);
 	fclose(file);
 	file = fopen(path, "r");
 	bibout(path);
-	printf("\n");
+	puts("\n");
 	fclose(file);
 }
 
 /* Main */
 int main(int argc, char *argv[]) {
-	char cmd_symbol, chr_input, str_input[BUF], label[BUF], path[62];
-	int num_input;
+	char chr, cmd_symbol, *str = NULL, *label = NULL, *path = NULL;
+	int num;
 	FILE *fptr;
 
-	/** Check # of arguments **/
+	/* Check # of arguments */
 	if (argc > 2) { // Two or more arguments
 		puts("Usage: biblio [FILE]");
 		puts("Try 'biblio --help' for more information.");
@@ -522,54 +447,56 @@ int main(int argc, char *argv[]) {
 			puts("Try 'biblio --help' for more information.");
 			exit(EXIT_FAILURE);
 		}
-		strncpy(path, argv[1], 62); // Any file name over 62 characters would overflow status bar
+		path = (char *) malloc(61);
+		strncpy(path, argv[1], 60); // Any file name over 50 characters would overflow status bar
 		path[strlen(path) + 1] = 0;
-		strcat(path, ".bib"); // Ensures that a bibliography file is created
-	} else // No arguments
+		path = strcat(path, ".bib"); // Ensures that a bibliography file is created
+	} else { // No arguments
+		path = (char *) malloc(5);
 		strcpy(path, ".bib");
+	}
 
-	/** Check file availability **/
+	/* Check file availability */
 	fptr = fopen(path, "a");
 	if (fptr == NULL) {
-		printf("Error: File cannot be reached");
+		puts("Error: File cannot be reached");
 		exit(EXIT_FAILURE);
 	}
 	fclose(fptr);
-	
-	/** Check styling label **/
+
+	/* Check styling label */
 	fptr = fopen(path, "r");
-	if (fgetc(fptr) == EOF) { // Add default label if file is empty
+	if (fgetchr(fptr) == EOF) { // Add default label if file is empty
 		fclose(fptr);
 		fptr = fopen(path, "w");
 		fputs("#All\n", fptr); // Default styling label
 	}
 	fclose(fptr);
 	fptr = fopen(path, "r");
-	if (fgetc(fptr) == '#') {
-		fgetsl(label, BUF, fptr);
+	if (fgetchr(fptr) == '#') {
+		label = afngetstr(fptr, 9);
 	} else {
 		puts("Error: Styling label not found");
 		exit(EXIT_FAILURE);
 	}
 	fclose(fptr);
-	
 
-	/** Check and apply preferences **/
+	/* Check and apply preferences */
 	if (access(".conf", R_OK|W_OK) == -1) {
 		fptr = fopen(".conf", "a");
-		fprintf(fptr, "Auto-refresh:\noff\n\nCommand symbol:\n>\n");
+		fputs("Auto-refresh:\noff\n\nCommand symbol:\n>\n", fptr);
 		cmd_symbol = '>';
 	} else {
 		fptr = fopen(".conf", "r");
 		fseekl(fptr, 2); // Auto-refresh
-		fgetsl(str_input, BUF, fptr);
-		if (strcmp(str_input, "on") == 0)
+		str = afgetstr(fptr);
+		if (strcmp(str, "on") == 0)
 			auto_refresh = true;
 		fseekl(fptr, 5); // Command-line symbol
-		cmd_symbol = fgetc(fptr);
+		cmd_symbol = fgetchr(fptr);
 	}
 
-	/** Check default bibliography **/
+	/* Check default bibliography */
 	if (access(".bib", R_OK|W_OK) == -1) {
 		fptr = fopen(".bib", "a");
 		fclose(fptr);
@@ -578,41 +505,40 @@ int main(int argc, char *argv[]) {
 	fptr = fopen(path, "r");
 	bibtitle(path, label);
 
-	/** Program loop **/
+	/* Program loop */
 	for (;;) {
 
-		/*** Command line ***/
+		/* Command line */
 		printf(" %c ", cmd_symbol); // Ensures command line cursor of user's choice
-		fgetsl(str_input, BUF, stdin);
+		str = agetstr();
 
-		/*** 'modify' command ***/
-		if (strcmp(str_input, "modify") == 0 || strcmp(str_input, "m") == 0) {
+		/* 'modify' command */
+		if (strcmp(str, "modify") == 0 || strcmp(str, "m") == 0) {
 			printf("   ├ Citation #: ");
-			fgetsl(str_input, BUF, stdin);
-			num_input = atoi(str_input) + 1;
-			if (num_input < 2 || num_input > fcountl(path) - 1) {
+			str = agetstr();
+			num = atoi(str) + 1;
+			if (num < 2 || num > fcountl(path) - 1) {
 				biberr("Citation does not exist");
-			} else if (strcmp(str_input, "esc") != 0) // Breaks if 'esc' is input
+			} else if (strcmp(str, "esc") != 0) // Breaks if 'esc' is input
 				editing = true; // Allows for 'cite' command to commence right afterwards
 			fsort(path, A_MOD|N_MOD);
 			oper_success = true;
 		}
 
-		/*** 'cite' command ***/
-		if (strcmp(str_input, "cite") == 0 || strcmp(str_input, "c") == 0 || editing) {
+		/* 'cite' command */
+		if (strcmp(str, "cite") == 0 || strcmp(str, "c") == 0 || editing) {
 			fptr = fopen(".temp", "w");
 			bibcite(fptr, label, &esc);
 			if(!esc) { // Breaks if 'esc' is input
 				fptr = fopen(".temp", "r");
 				if (editing) { // If came from 'modify' command...
-					fgets(str_input, BUF, fptr);
-					fmodil(path, num_input, str_input, false);
+					str = afgetstr(fptr);
+					fmodil(path, num, str, false);
 					editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
 				} else { // Else...
-					fgets(str_input, BUF, fptr);
-					fclose(fptr);
+					str = afgetstr(fptr);
 					fptr = fopen(path, "a");
-					fputs(str_input, fptr);
+					fputs(str, fptr);
 					fclose(fptr);
 				}
 				if (auto_refresh) // Refreshes automatically if auto-refresh is on
@@ -622,11 +548,11 @@ int main(int argc, char *argv[]) {
 			oper_success = true;
 		}
 
-		/*** 'wipe' command ***/
-		if (strcmp(str_input, "wipe") == 0 || strcmp(str_input, "w") == 0) {
+		/* 'wipe' command */
+		if (strcmp(str, "wipe") == 0 || strcmp(str, "w") == 0) {
 			printf("   └ Are you sure? (y/n): ");
-			fgetsl(str_input, BUF, stdin);
-			if(strcmp(str_input, "y") == 0) {
+			chr = getchr();
+			if(chr == 'y') {
 				fptr = fopen(path, "w");
 				fprintf(fptr, "#%s\n", label);
 				fclose(fptr);
@@ -636,86 +562,90 @@ int main(int argc, char *argv[]) {
 			oper_success = true;
 		}
 
-		/*** 'preferences' command ***/
-		if (strcmp(str_input, "preferences") == 0 || strcmp(str_input, "p") == 0) {
+		/* 'preferences' command */
+		if (strcmp(str, "preferences") == 0 || strcmp(str, "p") == 0) {
 			printf("   ├ Auto-refresh: "); // Configuration for auto-refresh
-			fgetsl(str_input, BUF, stdin);
-			if(strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-				if (strcmp(str_input, "on") == 0)
+			str = agetstr();
+			if(strcmp(str, "esc") != 0) { // Breaks if 'esc' is input
+				if (strcmp(str, "on") == 0)
 					auto_refresh = true;
-				else if (strcmp(str_input, "off") == 0)
+				else if (strcmp(str, "off") == 0)
 					auto_refresh = false;
-				fmodil(".conf", 2, str_input, true);
+				fmodil(".conf", 2, str, true);
 				printf("   └ Command symbol: "); // Configuration for command line symbol
-				fgetsl(str_input, BUF, stdin);
-				if(strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-					fmodil(".conf", 5, str_input, true);
-					cmd_symbol = str_input[0];
+				str = agetstr();
+				if(strcmp(str, "esc") != 0) { // Breaks if 'esc' is input
+					fmodil(".conf", 5, str, true);
+					cmd_symbol = str[0];
 				}
 			}
 			oper_success = true;
 		}
 
-		/*** 'delete' command ***/
-		if (strcmp(str_input, "delete") == 0 || strcmp(str_input, "d") == 0) {
+		/* 'delete' command */
+		if (strcmp(str, "delete") == 0 || strcmp(str, "d") == 0) {
 			printf("   └ Citation #: ");
-			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path) - 1) { // Ensures valid input
+			str = agetstr();
+			if (atoi(str) < 1 || atoi(str) > fcountl(path) - 1) { // Ensures valid input
 				printf("   ");
 				biberr("Citation does not exist");
 			}
-			else if (strcmp(str_input, "esc") != 0) { // Breaks if 'esc' is input
-				fdell(path, atoi(str_input) + 1);
+			else if (strcmp(str, "esc") != 0) { // Breaks if 'esc' is input
+				fdell(path, atoi(str) + 1);
 			}
 			if (auto_refresh) // Refreshes automatically if auto-refresh is on
 				bibtitle(path, label);
 			oper_success = true;
 		}
 
-		/*** 'echo' command ***/
-		if (strcmp(str_input, "echo") == 0 || strcmp(str_input, "e") == 0) {
+		/* 'echo' command */
+		if (strcmp(str, "echo") == 0 || strcmp(str, "e") == 0) {
 			printf("   └ Citation #: ");
-			fgetsl(str_input, BUF, stdin);
-			if (atoi(str_input) < 1 || atoi(str_input) > fcountl(path) - 1) { // Ensures valid input
+			str = agetstr();
+			if (atoi(str) < 1 || atoi(str) > fcountl(path) - 1) { // Ensures valid input
 				printf("   ");
 				biberr("Citation does not exist");
 			} else
-				bibecho(path, atoi(str_input));
+				bibecho(path, atoi(str));
 			oper_success = true;
 		}
 
-		/*** 'quit' command ***/
-		if (strcmp(str_input, "quit") == 0 || strcmp(str_input, "q") == 0) {
+		/* 'quit' command */
+		if (strcmp(str, "quit") == 0 || strcmp(str, "q") == 0) {
+			#ifndef DEBUG
 			system("clear"); // Leaves no trace of program
+			#endif
 			oper_success = true;
 			break; // Breaks out of program loop
 		}
 
-		/*** 'help' command ***/
-		if (strcmp(str_input, "help") == 0 || strcmp(str_input, "h") == 0) {
+		/* 'help' command */
+		if (strcmp(str, "help") == 0 || strcmp(str, "h") == 0) {
 			bibhelp();
 			bibtitle(path, label);
 			oper_success = true;
 		}
 
-		/*** 'label' command ***/
-		if (strcmp(str_input, "label") == 0 || strcmp(str_input, "l") == 0) {
+		/* 'label' command */
+		if (strcmp(str, "label") == 0 || strcmp(str, "l") == 0) {
 			printf("   └ New styling label: ");
-			fgetsl(label, BUF, stdin);
-			strcpy(str_input, "#");
-			strcat(str_input, label);
-			fmodil(path, 1, str_input, true);
-			bibtitle(path, label);
+			str = agetstr();
+			if (label[0] != 0 && strcmp(label, "esc") == 0) {
+				label = strcpy(str, "#");
+				label = strcat(label, str);
+				fmodil(path, 1, str, true);
+				bibtitle(path, label);
+			}
 			oper_success = true;
 		}
 
-		/*** 'refresh' command ***/
-		if (strcmp(str_input, "refresh") == 0 || strcmp(str_input, "r") == 0) {
+		/* 'refresh' command */
+		if (strcmp(str, "refresh") == 0 || strcmp(str, "r") == 0) {
 			bibtitle(path, label); // Refreshes the screen
 			oper_success = true;
 		}
 
-		/*** Checks for invalid command ***/
+		/* Checks for invalid command */
 		if (!oper_success)
 			biberr("Unknown command");
 
@@ -723,7 +653,7 @@ int main(int argc, char *argv[]) {
 		oper_success = false;
 		
 	}
-	
+	bin(3, str, label, path);
 	remove(".temp");
 	return EXIT_SUCCESS;
 }
