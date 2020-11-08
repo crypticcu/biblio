@@ -27,3 +27,5 @@ See a citation style not listed? The 'label' command allows you to mark each bib
 *v1.4* - Program is now argument-driven. Made it so the publisher's name would be italicized to comform to style guidelines. Removed 'open' and 'close' commands. Updated help page.
 
 *v1.5* - Overhauled UI. Improved bibliography output. Renamed commands and added shortcuts to each. Bibliographies are now automatically sorted alphabetically. Removed 'move' command. Added styling label functionality. Improved error handling. Updated help page.
+
+*v1.6* - Program is now backed by ioplus.h, allowing for precise, dynamic memory allocation. Increased code efficiency and readability. Fixed several major bugs.
