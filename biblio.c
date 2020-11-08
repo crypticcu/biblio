@@ -37,7 +37,7 @@
 #include <ioplus.h> // Additional I/O functions and macros
 
 /* #define DEBUG */ // Uncomment to prevent screen clearing
-#define VER		"1.5.5" // Program version
+#define VER		"1.6.0" // Program version
 #define C_DEF	{0,0,X,X,X,X,X,X,X,X,X,X,0,0,0,0} // Initial conditions of CITATION type 
 
 bool pref_created, auto_refresh, editing, oper_success, esc;
