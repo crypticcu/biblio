@@ -34,7 +34,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h> // POSIX-exclusive
-#include <ioplus.h> // Additional I/O functions and macros
+#include "/headers/ioplus.h" // Additional I/O functions and macros
 
 /* #define DEBUG */ // Uncomment to prevent screen clearing
 #define VER		"1.6.0" // Program version
