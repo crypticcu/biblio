@@ -37,7 +37,7 @@
 #include "/headers/ioplus.h" // Additional I/O functions and macros
 
 /* #define DEBUG */ // Uncomment to prevent screen clearing
-#define VER		"1.6.0" // Program version
+#define VER		"1.6.1" // Program version
 #define C_DEF	{0,0,X,X,X,X,X,X,X,X,X,X,0,0,0,0} // Initial conditions of CITATION type 
 
 bool pref_created, auto_refresh, editing, oper_success, esc;
@@ -75,7 +75,7 @@ void bibecho(char *path, int ln_echo) {
 
 /* Creates a citation in 'file'
  * 'escape' is used in case the client wishes to exit the command */
-void bibcite(FILE *file, char *label, bool *escape) {
+void bibcite(FILE *file, char *path, char *label, bool *escape) {
 	char *str = NULL, *style = NULL, *type = NULL;
 	bool manual;
 	CITATION Item = C_DEF;
@@ -114,12 +114,15 @@ void bibcite(FILE *file, char *label, bool *escape) {
 				if (strcmp(type, "website") == 0) {
 					if (strcmp(style, "apa") == 0) {
 						printf("         ├ URL: ");
+						Item.url = agetstr();
 					} else {
 						printf("         ├ Website: ");
 						Item.website = agetstr();
-						printf("         │  └ URL: ");
+						if (Item.website[0] != 0) {
+							printf("         │  └ URL: ");
+							Item.url = agetstr();
+						}
 					}
-					Item.url = agetstr();
 				}
 
 				/* Website/book-specific attributes */
@@ -289,6 +292,7 @@ void bibcite(FILE *file, char *label, bool *escape) {
 
 				fprintf(file, "\n");
 				fclose(file);
+				ftop(path, '.', -1);
 				break;
 			} else if (strcmp(type, "esc") == 0) {
 				*escape = true;
@@ -528,15 +532,17 @@ int main(int argc, char *argv[]) {
 		/* 'cite' command */
 		if (strcmp(str, "cite") == 0 || strcmp(str, "c") == 0 || editing) {
 			fptr = fopen(".temp", "w");
-			bibcite(fptr, label, &esc);
+			bibcite(fptr, ".temp", label, &esc);
 			if(!esc) { // Breaks if 'esc' is input
 				fptr = fopen(".temp", "r");
 				if (editing) { // If came from 'modify' command...
 					str = afgetstr(fptr);
+					str = strcat(str, " ");
 					fmodil(path, num, str, false);
 					editing = false; // Ensures that 'cite' command is not guaranteed to run afterwards
 				} else { // Else...
 					str = afgetstr(fptr);
+					str = strcat(str, " ");
 					fptr = fopen(path, "a");
 					fputs(str, fptr);
 					fclose(fptr);
