@@ -195,14 +195,14 @@ double getdbl(void) {
 /////////////////////
 
 /* Checks if newline is final character in file 'path'
- * If not, then one is placed at end */
-void fapp(char* path) {
-	FILE *file = fopen(path, "r");
+ * If not, then one is placed 'off' places from end of file */
+void ftop(char* path, char chr, int off) {
+	FILE *file = fopen(path, "r+");
 
-	fseek(file, -1, SEEK_END);
-	if (fgetchr(file) != '\n') {
-		file = fopen(path, "a");
-		fputc('\n', file);
+	fseek(file, off - 1, SEEK_END);
+	if (fgetchr(file) != chr) {
+		fseek(file, off - 1, SEEK_CUR);
+		fputc(chr, file);
 	}
 	fclose(file);
 }
@@ -223,7 +223,7 @@ unsigned int flongl(char *path) {
 	int size = 0, num = 0;
 	FILE *file = fopen(path, "r");
 
-	fapp(path);
+	ftop(path, '\n', 0);
 	while ((chr = fgetchr(file)) != EOF) {
 		fseek(file, -1, SEEK_CUR);
 		while ((chr = fgetchr(file)) != '\n') {
@@ -269,7 +269,7 @@ unsigned int fcountl(char *path) {
 	char str[size];
 	FILE *file = fopen(path, "r");
 
-	fapp(path);
+	ftop(path, '\n', 0);
 	while (fgetchr(file) == EOF) {
 		fseek(file, -1, SEEK_CUR);
 		fgetstr(file, str);
@@ -355,7 +355,7 @@ void fmovl(char *path, int ln_from, int ln_to) {
 	int ln_num = 1;
 	FILE *file = fopen(path, "r"), *temp = fopen(".temp", "w");
 
-	fapp(path);
+	ftop(path, '\n', 0);
 	rewind(file);
 	if (ln_from < ln_to)
 		ln_to++;
